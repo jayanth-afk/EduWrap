@@ -71,43 +71,42 @@ export function UserProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        // User is signed in — fetch their Firestore profile
+        const baseUser = {
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Scholar',
+          email: firebaseUser.email || '',
+          avatar: firebaseUser.photoURL || null,
+          xp: 0,
+          level: 1,
+          streak: 0,
+          subjects: [],
+          studyPreferences: {},
+        };
+
+        // Immediately unlock session state
+        setSession(prev => ({
+          isLoggedIn: true,
+          user: prev.user && prev.user.id === firebaseUser.uid ? { ...baseUser, ...prev.user } : baseUser,
+          loading: false,
+          error: null,
+        }));
+
+        // Fetch or create Firestore user profile in background
         try {
           const profile = await fetchDoc(userDoc(firebaseUser.uid));
-          setSession({
-            isLoggedIn: true,
-            user: profile || {
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || '',
-              email: firebaseUser.email || '',
-              avatar: firebaseUser.photoURL || null,
-              xp: 0,
-              level: 1,
-              streak: 0,
-              subjects: [],
-              studyPreferences: {},
-            },
-            loading: false,
-            error: null,
-          });
+          if (profile) {
+            setSession(prev => ({
+              ...prev,
+              user: { ...baseUser, ...profile },
+            }));
+          } else {
+            await createDocWithId(userDoc(firebaseUser.uid), {
+              ...baseUser,
+              onboardingCompleted: false,
+            });
+          }
         } catch (err) {
-          console.warn('Failed to fetch user Firestore profile, using auth fallback:', err);
-          setSession({
-            isLoggedIn: true,
-            user: {
-              id: firebaseUser.uid,
-              name: firebaseUser.displayName || '',
-              email: firebaseUser.email || '',
-              avatar: firebaseUser.photoURL || null,
-              xp: 0,
-              level: 1,
-              streak: 0,
-              subjects: [],
-              studyPreferences: {},
-            },
-            loading: false,
-            error: null,
-          });
+          console.warn('Firestore profile sync notice:', err);
         }
       } else {
         // No user signed in
@@ -128,7 +127,25 @@ export function UserProvider({ children }) {
     setSession(prev => ({ ...prev, loading: true, error: null }));
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      return result.user;
+      const firebaseUser = result.user;
+      const baseUser = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Scholar',
+        email: firebaseUser.email || '',
+        avatar: firebaseUser.photoURL || null,
+        xp: 0,
+        level: 1,
+        streak: 0,
+        subjects: [],
+        studyPreferences: {},
+      };
+      setSession({
+        isLoggedIn: true,
+        user: baseUser,
+        loading: false,
+        error: null,
+      });
+      return firebaseUser;
     } catch (err) {
       const message = getAuthErrorMessage(err.code);
       setSession(prev => ({ ...prev, loading: false, error: message }));
@@ -145,35 +162,58 @@ export function UserProvider({ children }) {
       // Set display name on Firebase Auth profile
       await updateProfile(firebaseUser, { displayName: name });
 
+      const baseUser = {
+        id: firebaseUser.uid,
+        name,
+        email: firebaseUser.email,
+        avatar: null,
+        xp: 0,
+        level: 1,
+        streak: 0,
+        subjects: [],
+        studyPreferences: {},
+        onboardingCompleted: false,
+      };
+
+      setSession({
+        isLoggedIn: true,
+        user: baseUser,
+        loading: false,
+        error: null,
+      });
+
       // Create Firestore user document safely
       try {
-        await createDocWithId(userDoc(firebaseUser.uid), {
-          id: firebaseUser.uid,
-          name,
-          email: firebaseUser.email,
-          avatar: null,
-          xp: 0,
-          level: 1,
-          streak: 0,
-          subjects: [],
-          studyPreferences: {},
-          onboardingCompleted: false,
-        });
+        await createDocWithId(userDoc(firebaseUser.uid), baseUser);
       } catch (docErr) {
         console.warn('Firestore doc creation skipped or failed:', docErr);
       }
 
-      setSession(prev => ({ ...prev, error: null }));
       return firebaseUser;
     } catch (err) {
       // If account already exists with this email, automatically log them in!
       if (err.code === 'auth/email-already-in-use') {
         try {
           const { user: existingUser } = await signInWithEmailAndPassword(auth, email, password);
-          setSession(prev => ({ ...prev, error: null }));
+          const baseUser = {
+            id: existingUser.uid,
+            name: existingUser.displayName || existingUser.email?.split('@')[0] || name || 'Scholar',
+            email: existingUser.email || '',
+            avatar: existingUser.photoURL || null,
+            xp: 0,
+            level: 1,
+            streak: 0,
+            subjects: [],
+            studyPreferences: {},
+          };
+          setSession({
+            isLoggedIn: true,
+            user: baseUser,
+            loading: false,
+            error: null,
+          });
           return existingUser;
         } catch (loginErr) {
-          // If password was incorrect for the existing account
           const message = (loginErr.code === 'auth/wrong-password' || loginErr.code === 'auth/invalid-credential')
             ? 'An account with this email already exists. Please enter your existing password or sign in with Google/GitHub.'
             : getAuthErrorMessage(loginErr.code);
@@ -195,28 +235,44 @@ export function UserProvider({ children }) {
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseUser = result.user;
 
-      // Safe Firestore user document creation (non-blocking for auth)
+      const baseUser = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || '',
+        email: firebaseUser.email || '',
+        avatar: firebaseUser.photoURL || null,
+        xp: 0,
+        level: 1,
+        streak: 0,
+        subjects: [],
+        studyPreferences: {},
+      };
+
+      // Immediately unlock session state
+      setSession({
+        isLoggedIn: true,
+        user: baseUser,
+        loading: false,
+        error: null,
+      });
+
+      // Background Firestore profile sync
       try {
         const existing = await fetchDoc(userDoc(firebaseUser.uid));
         if (!existing) {
           await createDocWithId(userDoc(firebaseUser.uid), {
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || '',
-            email: firebaseUser.email || '',
-            avatar: firebaseUser.photoURL || null,
-            xp: 0,
-            level: 1,
-            streak: 0,
-            subjects: [],
-            studyPreferences: {},
+            ...baseUser,
             onboardingCompleted: false,
           });
+        } else {
+          setSession(prev => ({
+            ...prev,
+            user: { ...baseUser, ...existing },
+          }));
         }
       } catch (docErr) {
         console.warn('Firestore profile sync skipped or failed:', docErr);
       }
 
-      setSession(prev => ({ ...prev, error: null }));
       return firebaseUser;
     } catch (err) {
       console.error('Google login error:', err.code, err.message, err);
@@ -246,27 +302,44 @@ export function UserProvider({ children }) {
       const result = await signInWithPopup(auth, githubProvider);
       const firebaseUser = result.user;
 
+      const baseUser = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || '',
+        email: firebaseUser.email || '',
+        avatar: firebaseUser.photoURL || null,
+        xp: 0,
+        level: 1,
+        streak: 0,
+        subjects: [],
+        studyPreferences: {},
+      };
+
+      // Immediately unlock session state
+      setSession({
+        isLoggedIn: true,
+        user: baseUser,
+        loading: false,
+        error: null,
+      });
+
+      // Background Firestore profile sync
       try {
         const existing = await fetchDoc(userDoc(firebaseUser.uid));
         if (!existing) {
           await createDocWithId(userDoc(firebaseUser.uid), {
-            id: firebaseUser.uid,
-            name: firebaseUser.displayName || '',
-            email: firebaseUser.email || '',
-            avatar: firebaseUser.photoURL || null,
-            xp: 0,
-            level: 1,
-            streak: 0,
-            subjects: [],
-            studyPreferences: {},
+            ...baseUser,
             onboardingCompleted: false,
           });
+        } else {
+          setSession(prev => ({
+            ...prev,
+            user: { ...baseUser, ...existing },
+          }));
         }
       } catch (docErr) {
         console.warn('Firestore profile sync skipped or failed:', docErr);
       }
 
-      setSession(prev => ({ ...prev, error: null }));
       return firebaseUser;
     } catch (err) {
       console.error('GitHub login error:', err.code, err.message, err);
