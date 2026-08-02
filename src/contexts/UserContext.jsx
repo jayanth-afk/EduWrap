@@ -156,6 +156,7 @@ export function UserProvider({ children }) {
         });
       }
     } catch (err) {
+      console.error('Google login error:', err.code, err.message, err);
       if (err.code === 'auth/popup-closed-by-user') {
         setSession(prev => ({ ...prev, loading: false }));
         return;
@@ -189,6 +190,7 @@ export function UserProvider({ children }) {
         });
       }
     } catch (err) {
+      console.error('GitHub login error:', err.code, err.message, err);
       if (err.code === 'auth/popup-closed-by-user') {
         setSession(prev => ({ ...prev, loading: false }));
         return;
