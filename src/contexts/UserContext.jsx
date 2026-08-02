@@ -3,7 +3,8 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   GithubAuthProvider,
   signOut,
@@ -30,6 +31,37 @@ export function UserProvider({ children }) {
     loading: true,  // true until auth state is resolved
     error: null,
   });
+
+  // ─── HANDLE REDIRECT RESULT (runs once on mount after redirect) ───
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result?.user) {
+          const firebaseUser = result.user;
+          const existing = await fetchDoc(userDoc(firebaseUser.uid));
+          if (!existing) {
+            await createDocWithId(userDoc(firebaseUser.uid), {
+              id: firebaseUser.uid,
+              name: firebaseUser.displayName || '',
+              email: firebaseUser.email || '',
+              avatar: firebaseUser.photoURL || null,
+              xp: 0,
+              level: 1,
+              streak: 0,
+              subjects: [],
+              studyPreferences: {},
+              onboardingCompleted: false,
+            });
+          }
+        }
+      })
+      .catch((err) => {
+        console.error('Redirect result error:', err.code, err.message);
+        if (err.code !== 'auth/popup-closed-by-user') {
+          setSession(prev => ({ ...prev, error: getAuthErrorMessage(err.code) }));
+        }
+      });
+  }, []);
 
   // ─── AUTH STATE LISTENER ───
   // Fires once on mount and whenever the user signs in/out
@@ -132,72 +164,29 @@ export function UserProvider({ children }) {
     }
   }, []);
 
-  // ─── GOOGLE LOGIN ───
+  // ─── GOOGLE LOGIN (redirect-based) ───
   const loginWithGoogle = useCallback(async () => {
     setSession(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const firebaseUser = result.user;
-
-      // Check if user doc exists, create if not
-      const existing = await fetchDoc(userDoc(firebaseUser.uid));
-      if (!existing) {
-        await createDocWithId(userDoc(firebaseUser.uid), {
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || '',
-          email: firebaseUser.email || '',
-          avatar: firebaseUser.photoURL || null,
-          xp: 0,
-          level: 1,
-          streak: 0,
-          subjects: [],
-          studyPreferences: {},
-          onboardingCompleted: false,
-        });
-      }
+      await signInWithRedirect(auth, googleProvider);
+      // Page will redirect — auth state is handled by getRedirectResult on return
     } catch (err) {
       console.error('Google login error:', err.code, err.message, err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setSession(prev => ({ ...prev, loading: false }));
-        return;
-      }
       const message = getAuthErrorMessage(err.code);
       setSession(prev => ({ ...prev, loading: false, error: message }));
-      throw new Error(message);
     }
   }, []);
 
-  // ─── GITHUB LOGIN ───
+  // ─── GITHUB LOGIN (redirect-based) ───
   const loginWithGithub = useCallback(async () => {
     setSession(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const result = await signInWithPopup(auth, githubProvider);
-      const firebaseUser = result.user;
-
-      const existing = await fetchDoc(userDoc(firebaseUser.uid));
-      if (!existing) {
-        await createDocWithId(userDoc(firebaseUser.uid), {
-          id: firebaseUser.uid,
-          name: firebaseUser.displayName || '',
-          email: firebaseUser.email || '',
-          avatar: firebaseUser.photoURL || null,
-          xp: 0,
-          level: 1,
-          streak: 0,
-          subjects: [],
-          studyPreferences: {},
-          onboardingCompleted: false,
-        });
-      }
+      await signInWithRedirect(auth, githubProvider);
+      // Page will redirect — auth state is handled by getRedirectResult on return
     } catch (err) {
       console.error('GitHub login error:', err.code, err.message, err);
-      if (err.code === 'auth/popup-closed-by-user') {
-        setSession(prev => ({ ...prev, loading: false }));
-        return;
-      }
       const message = getAuthErrorMessage(err.code);
       setSession(prev => ({ ...prev, loading: false, error: message }));
-      throw new Error(message);
     }
   }, []);
 
