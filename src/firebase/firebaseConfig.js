@@ -12,9 +12,9 @@
  */
 
 import { initializeApp } from 'firebase/app';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getFirestore } from 'firebase/firestore';
+import { getAuth, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 
 const firebaseConfig = {
@@ -36,9 +36,9 @@ export const auth = getAuth(app);
 export const storage = getStorage(app);
 export const analytics = getAnalytics(app);
 
-// Uncomment these lines if you want to use Firebase Emulators for local development:
-// connectFirestoreEmulator(db, 'localhost', 8080);
-// connectAuthEmulator(auth, 'http://localhost:9099');
-// connectStorageEmulator(storage, 'localhost', 9199);
+// Explicitly ensure persistence is set to browser local storage across tabs and popups
+setPersistence(auth, browserLocalPersistence).catch((e) => {
+  console.warn('Firebase persistence setup:', e);
+});
 
 export default app;

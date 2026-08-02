@@ -6,6 +6,8 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  fetchSignInMethodsForEmail,
+  linkWithCredential,
   GoogleAuthProvider,
   GithubAuthProvider,
   signOut,
@@ -17,13 +19,16 @@ import {
   fetchDoc,
   createDocWithId,
   patchDoc,
-  serverTimestamp,
 } from '../firebase/firestore';
 
 const UserContext = createContext(null);
 
 const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
+
 const githubProvider = new GithubAuthProvider();
+githubProvider.addScope('read:user');
+githubProvider.addScope('user:email');
 
 export function UserProvider({ children }) {
   const [session, setSession] = useState({
@@ -39,21 +44,37 @@ export function UserProvider({ children }) {
       .then(async (result) => {
         if (result?.user) {
           const firebaseUser = result.user;
+          const baseUser = {
+            id: firebaseUser.uid,
+            name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Scholar',
+            email: firebaseUser.email || '',
+            avatar: firebaseUser.photoURL || null,
+            xp: 0,
+            level: 1,
+            streak: 0,
+            subjects: [],
+            studyPreferences: {},
+          };
+
+          setSession({
+            isLoggedIn: true,
+            user: baseUser,
+            loading: false,
+            error: null,
+          });
+
           try {
             const existing = await fetchDoc(userDoc(firebaseUser.uid));
             if (!existing) {
               await createDocWithId(userDoc(firebaseUser.uid), {
-                id: firebaseUser.uid,
-                name: firebaseUser.displayName || '',
-                email: firebaseUser.email || '',
-                avatar: firebaseUser.photoURL || null,
-                xp: 0,
-                level: 1,
-                streak: 0,
-                subjects: [],
-                studyPreferences: {},
+                ...baseUser,
                 onboardingCompleted: false,
               });
+            } else {
+              setSession(prev => ({
+                ...prev,
+                user: { ...baseUser, ...existing },
+              }));
             }
           } catch (firestoreErr) {
             console.warn('Firestore redirect sync skipped:', firestoreErr);
@@ -61,13 +82,11 @@ export function UserProvider({ children }) {
         }
       })
       .catch((err) => {
-        // Silently ignore redirect checks when no redirect occurred or harmless popup cancellations
         console.warn('Redirect check notice:', err?.code, err?.message);
       });
   }, []);
 
   // ─── AUTH STATE LISTENER ───
-  // Fires once on mount and whenever the user signs in/out
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -83,15 +102,16 @@ export function UserProvider({ children }) {
           studyPreferences: {},
         };
 
-        // Immediately unlock session state
+        // Commit authentication state immediately
         setSession(prev => ({
+          ...prev,
           isLoggedIn: true,
-          user: prev.user && prev.user.id === firebaseUser.uid ? { ...baseUser, ...prev.user } : baseUser,
+          user: prev.user ? { ...baseUser, ...prev.user } : baseUser,
           loading: false,
           error: null,
         }));
 
-        // Fetch or create Firestore user profile in background
+        // Non-blocking background Firestore sync
         try {
           const profile = await fetchDoc(userDoc(firebaseUser.uid));
           if (profile) {
@@ -99,17 +119,11 @@ export function UserProvider({ children }) {
               ...prev,
               user: { ...baseUser, ...profile },
             }));
-          } else {
-            await createDocWithId(userDoc(firebaseUser.uid), {
-              ...baseUser,
-              onboardingCompleted: false,
-            });
           }
         } catch (err) {
-          console.warn('Firestore profile sync notice:', err);
+          console.warn('Background Firestore profile load failed (using base profile):', err);
         }
       } else {
-        // No user signed in
         setSession({
           isLoggedIn: false,
           user: null,
@@ -122,12 +136,11 @@ export function UserProvider({ children }) {
     return () => unsubscribe();
   }, []);
 
-  // ─── EMAIL/PASSWORD LOGIN ───
+  // ─── EMAIL & PASSWORD SIGN IN ───
   const login = useCallback(async (email, password) => {
     setSession(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const firebaseUser = result.user;
+      const { user: firebaseUser } = await signInWithEmailAndPassword(auth, email, password);
       const baseUser = {
         id: firebaseUser.uid,
         name: firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'Scholar',
@@ -139,12 +152,28 @@ export function UserProvider({ children }) {
         subjects: [],
         studyPreferences: {},
       };
+
+      // Set session immediately so UI updates without waiting
       setSession({
         isLoggedIn: true,
         user: baseUser,
         loading: false,
         error: null,
       });
+
+      // Background Firestore profile fetch
+      try {
+        const profile = await fetchDoc(userDoc(firebaseUser.uid));
+        if (profile) {
+          setSession(prev => ({
+            ...prev,
+            user: { ...baseUser, ...profile },
+          }));
+        }
+      } catch (profileErr) {
+        console.warn('Firestore profile load skipped:', profileErr);
+      }
+
       return firebaseUser;
     } catch (err) {
       const message = getAuthErrorMessage(err.code);
@@ -153,14 +182,17 @@ export function UserProvider({ children }) {
     }
   }, []);
 
-  // ─── EMAIL/PASSWORD SIGNUP (with auto-login if account exists) ───
+  // ─── EMAIL & PASSWORD SIGN UP ───
   const signup = useCallback(async (email, password, name) => {
     setSession(prev => ({ ...prev, loading: true, error: null }));
     try {
       const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password);
-
-      // Set display name on Firebase Auth profile
-      await updateProfile(firebaseUser, { displayName: name });
+      
+      try {
+        await updateProfile(firebaseUser, { displayName: name });
+      } catch (profileUpdateErr) {
+        console.warn('Firebase displayName update skipped:', profileUpdateErr);
+      }
 
       const baseUser = {
         id: firebaseUser.uid,
@@ -182,7 +214,6 @@ export function UserProvider({ children }) {
         error: null,
       });
 
-      // Create Firestore user document safely
       try {
         await createDocWithId(userDoc(firebaseUser.uid), baseUser);
       } catch (docErr) {
@@ -191,7 +222,6 @@ export function UserProvider({ children }) {
 
       return firebaseUser;
     } catch (err) {
-      // If account already exists with this email, automatically log them in!
       if (err.code === 'auth/email-already-in-use') {
         try {
           const { user: existingUser } = await signInWithEmailAndPassword(auth, email, password);
@@ -247,7 +277,6 @@ export function UserProvider({ children }) {
         studyPreferences: {},
       };
 
-      // Immediately unlock session state
       setSession({
         isLoggedIn: true,
         user: baseUser,
@@ -255,7 +284,6 @@ export function UserProvider({ children }) {
         error: null,
       });
 
-      // Background Firestore profile sync
       try {
         const existing = await fetchDoc(userDoc(firebaseUser.uid));
         if (!existing) {
@@ -275,8 +303,6 @@ export function UserProvider({ children }) {
 
       return firebaseUser;
     } catch (err) {
-      console.error('Google login error:', err.code, err.message, err);
-      // If popup blocked, fall back to redirect
       if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
         try {
           await signInWithRedirect(auth, googleProvider);
@@ -314,7 +340,6 @@ export function UserProvider({ children }) {
         studyPreferences: {},
       };
 
-      // Immediately unlock session state
       setSession({
         isLoggedIn: true,
         user: baseUser,
@@ -322,7 +347,6 @@ export function UserProvider({ children }) {
         error: null,
       });
 
-      // Background Firestore profile sync
       try {
         const existing = await fetchDoc(userDoc(firebaseUser.uid));
         if (!existing) {
@@ -342,7 +366,6 @@ export function UserProvider({ children }) {
 
       return firebaseUser;
     } catch (err) {
-      console.error('GitHub login error:', err.code, err.message, err);
       if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
         try {
           await signInWithRedirect(auth, githubProvider);
@@ -425,7 +448,7 @@ function getAuthErrorMessage(code) {
     'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
     'auth/network-request-failed': 'Network error. Check your connection.',
     'auth/popup-closed-by-user': 'Sign-in popup was closed.',
-    'auth/account-exists-with-different-credential': 'An account already exists with a different sign-in method.',
+    'auth/account-exists-with-different-credential': 'An account with this email already exists under a different sign-in method (e.g. Google or Email/Password). Please sign in using your original method.',
   };
   return messages[code] || 'Something went wrong. Please try again.';
 }
