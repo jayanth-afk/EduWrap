@@ -10,7 +10,7 @@ export default function PrivacyPolicy() {
       icon: Database,
       title: "1. Information We Collect",
       content: [
-        "**Account Information**: When you sign up via Email, Google, GitHub, Apple, or Facebook, we collect your name, email address, and profile picture provided by your authentication provider.",
+        "**Account Information**: When you sign up via Email, Google, GitHub, X (Twitter), or Facebook, we collect your name, email address, and profile picture provided by your authentication provider.",
         "**Study Workspace Content**: Notes, flashcards, custom decks, quiz responses, study room chats, and uploaded study files you create or upload within EduWrap.",
         "**Usage & Telemetry Data**: Technical telemetry including browser type, operating system, timestamped study activity streaks, and session metrics used strictly to improve workspace responsiveness."
       ]
@@ -28,7 +28,7 @@ export default function PrivacyPolicy() {
       icon: Lock,
       title: "3. Third-Party Integrations & OAuth",
       content: [
-        "**Authentication Providers**: We support single sign-on (SSO) via Google, GitHub, Apple, and Facebook. We only request basic profile permissions (name, email, public avatar) required to establish your account.",
+        "**Authentication Providers**: We support single sign-on (SSO) via Google, GitHub, X (Twitter), and Facebook. We only request basic profile permissions (name, email, public avatar) required to establish your account.",
         "**Cloud Infrastructure**: EduWrap is powered by Google Firebase (Authentication & Cloud Firestore). Your data is transmitted using encrypted TLS/HTTPS and stored securely with industry-standard access controls.",
         "**No Third-Party Ad Selling**: We do not sell, rent, or monetize your personal data or study materials with third-party advertisers."
       ]

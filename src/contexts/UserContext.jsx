@@ -12,6 +12,7 @@ import {
   GoogleAuthProvider,
   GithubAuthProvider,
   FacebookAuthProvider,
+  TwitterAuthProvider,
   OAuthProvider,
   signOut,
   updateProfile,
@@ -33,9 +34,7 @@ const githubProvider = new GithubAuthProvider();
 githubProvider.addScope('read:user');
 githubProvider.addScope('user:email');
 
-const appleProvider = new OAuthProvider('apple.com');
-appleProvider.addScope('email');
-appleProvider.addScope('name');
+const twitterProvider = new TwitterAuthProvider();
 
 const facebookProvider = new FacebookAuthProvider();
 facebookProvider.addScope('email');
@@ -426,11 +425,11 @@ export function UserProvider({ children }) {
     }
   }, []);
 
-  // ─── APPLE LOGIN (popup with redirect fallback) ───
-  const loginWithApple = useCallback(async () => {
+  // ─── X (TWITTER) LOGIN (popup with redirect fallback) ───
+  const loginWithTwitter = useCallback(async () => {
     setSession(prev => ({ ...prev, loading: true, error: null }));
     try {
-      const result = await signInWithPopup(auth, appleProvider);
+      const result = await signInWithPopup(auth, twitterProvider);
       const firebaseUser = result.user;
 
       const baseUser = {
@@ -471,13 +470,13 @@ export function UserProvider({ children }) {
 
       return firebaseUser;
     } catch (err) {
-      console.error('Apple login error:', err.code, err.message, err);
+      console.error('Twitter/X login error:', err.code, err.message, err);
       if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
         try {
-          await signInWithRedirect(auth, appleProvider);
+          await signInWithRedirect(auth, twitterProvider);
           return;
         } catch (redirectErr) {
-          console.error('Apple redirect fallback error:', redirectErr);
+          console.error('Twitter/X redirect fallback error:', redirectErr);
         }
       }
       if (err.code === 'auth/popup-closed-by-user') {
@@ -591,7 +590,7 @@ export function UserProvider({ children }) {
       signup,
       loginWithGoogle,
       loginWithGithub,
-      loginWithApple,
+      loginWithTwitter,
       loginWithFacebook,
       updateUser,
       logout,
