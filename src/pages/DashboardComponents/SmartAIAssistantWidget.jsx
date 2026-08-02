@@ -1,9 +1,9 @@
 import { motion } from 'framer-motion';
-import { useDashboard } from '../../contexts/DashboardContext';
+import { useNavigate } from 'react-router-dom';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
 export default function SmartAIAssistantWidget() {
-  const { aiSuggestions } = useDashboard(); // Assuming we use mock data or static for now
+  const navigate = useNavigate();
 
   return (
     <motion.div 
@@ -23,7 +23,10 @@ export default function SmartAIAssistantWidget() {
           You haven’t revised <span className="text-[color:oklch(0.58_0.22_var(--accent-hue))]">Thermodynamics</span> in 5 days. Your quiz accuracy in this topic has dropped by 12%.
         </p>
 
-        <button className="flex items-center gap-2 text-sm font-semibold bg-[color:oklch(0.58_0.22_var(--accent-hue))] text-white px-4 py-2 rounded-xl hover:opacity-90 transition-opacity w-fit shadow-(--shadow-glow)">
+        <button 
+          onClick={() => navigate('/flashcards')}
+          className="flex items-center gap-2 text-sm font-semibold bg-[color:oklch(0.58_0.22_var(--accent-hue))] text-white px-4 py-2 rounded-xl hover:opacity-90 transition-opacity w-fit shadow-(--shadow-glow) cursor-pointer"
+        >
           Review Now <ArrowRight size={16} />
         </button>
       </div>

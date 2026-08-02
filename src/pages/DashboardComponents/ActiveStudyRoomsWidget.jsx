@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion';
+import { useNavigate, Link } from 'react-router-dom';
 import { useDashboard } from '../../contexts/DashboardContext';
-import { PlayCircle, Users } from 'lucide-react';
+import { PlayCircle, Users, ArrowRight } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 
 export default function ActiveStudyRoomsWidget() {
   const { activeRooms } = useDashboard();
+  const navigate = useNavigate();
 
   return (
     <motion.div 
@@ -16,11 +18,18 @@ export default function ActiveStudyRoomsWidget() {
           <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div>
           <h3 className="font-bold text-lg">Live Rooms</h3>
         </div>
+        <Link to="/rooms" className="text-xs font-semibold text-[color:oklch(0.58_0.22_var(--accent-hue))] hover:underline flex items-center gap-1">
+          View all <ArrowRight size={12} />
+        </Link>
       </div>
 
       <div className="flex-1 overflow-y-auto no-scrollbar space-y-3">
         {activeRooms.map(room => (
-          <div key={room.id} className="p-4 rounded-2xl bg-(--bg-elevated) border border-(--border-default) hover:border-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.4)] transition-colors group cursor-pointer relative overflow-hidden">
+          <div 
+            key={room.id} 
+            onClick={() => navigate(`/room/${room.id}`)}
+            className="p-4 rounded-2xl bg-(--bg-elevated) border border-(--border-default) hover:border-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.4)] transition-colors group cursor-pointer relative overflow-hidden"
+          >
             <div className="absolute top-0 right-0 w-32 h-32 bg-[color:oklch(0.58_0.22_var(--accent-hue))] opacity-5 blur-[40px] group-hover:opacity-10 transition-opacity"></div>
             
             <div className="flex justify-between items-start mb-3 relative z-10">

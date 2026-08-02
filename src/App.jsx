@@ -11,11 +11,13 @@ import { DoubtProvider } from './contexts/DoubtContext';
 import { FileProvider } from './contexts/FileContext';
 import AppLayout from './layouts/AppLayout';
 import AuthLayout from './layouts/AuthLayout';
-import Landing from './pages/Landing';
-import Dashboard from './pages/Dashboard';
-import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Onboarding from './pages/Onboarding';
+
+// Lazy-loaded pages — code-split for faster initial page loads
+const Landing = lazy(() => import('./pages/Landing'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const Login = lazy(() => import('./pages/Login'));
+const Signup = lazy(() => import('./pages/Signup'));
+const Onboarding = lazy(() => import('./pages/Onboarding'));
 
 // Lazy-loaded pages — code-split for better initial load
 const Rooms = lazy(() => import('./pages/Rooms'));

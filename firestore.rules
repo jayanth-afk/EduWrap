@@ -1,0 +1,73 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // ─── USERS COLLECTION ───
+    match /users/{userId} {
+      // Any authenticated user can read basic profiles (for leaderboards, rooms, etc.)
+      allow read: if isAuthenticated();
+      // Only the user themselves can write/update their own profile
+      allow write: if isOwner(userId);
+
+      // User subcollections (tasks, notifications, folders, votes)
+      match /{subcollection}/{docId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // ─── ROOMS COLLECTION ───
+    match /rooms/{roomId} {
+      allow read, create, update: if isAuthenticated();
+      allow delete: if isAuthenticated();
+
+      match /{subcollection}/{docId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // ─── NOTES COLLECTION ───
+    match /notes/{noteId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // ─── FLASHCARD DECKS ───
+    match /flashcardDecks/{deckId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // ─── QUIZZES ───
+    match /quizzes/{quizId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // ─── DOUBTS & ANSWERS ───
+    match /doubts/{doubtId} {
+      allow read, write: if isAuthenticated();
+
+      match /answers/{answerId} {
+        allow read, write: if isAuthenticated();
+      }
+    }
+
+    // ─── FILES & RESOURCES ───
+    match /files/{fileId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    // Catch-all fallback for any other authenticated access
+    match /{document=**} {
+      allow read, write: if isAuthenticated();
+    }
+  }
+}

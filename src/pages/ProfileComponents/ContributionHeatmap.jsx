@@ -8,10 +8,7 @@ const itemVariants = {
 };
 
 export default function ContributionHeatmap() {
-  const [gridData, setGridData] = useState([]);
-  
-  // Generate dummy data (14 weeks x 7 days)
-  useEffect(() => {
+  const [gridData] = useState(() => {
     const data = [];
     const today = new Date();
     for (let w = 0; w < 14; w++) {
@@ -20,13 +17,10 @@ export default function ContributionHeatmap() {
         const date = new Date(today);
         date.setDate(date.getDate() - ((13 - w) * 7 + (6 - d)));
         
-        // Random activity level 0-4
         let level = 0;
         if (Math.random() > 0.4) {
           level = Math.floor(Math.random() * 4) + 1;
         }
-        
-        // Make the last few days have more activity for the demo
         if (w === 13 && d > 3) level = Math.max(level, 2);
 
         week.push({
@@ -37,8 +31,8 @@ export default function ContributionHeatmap() {
       }
       data.push(week);
     }
-    setGridData(data);
-  }, []);
+    return data;
+  });
 
   const getOpacityForLevel = (level) => {
     if (level === 0) return 'bg-(--bg-elevated) border border-(--border-default)';

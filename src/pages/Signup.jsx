@@ -63,19 +63,27 @@ export default function Signup() {
 
   const handleGoogleSignup = async () => {
     setError('');
+    clearError();
     try {
-      await loginWithGoogle();
+      const user = await loginWithGoogle();
+      if (user) {
+        navigate('/dashboard');
+      }
     } catch (err) {
-      setError(err.message);
+      if (err?.message) setError(err.message);
     }
   };
 
   const handleGithubSignup = async () => {
     setError('');
+    clearError();
     try {
-      await loginWithGithub();
+      const user = await loginWithGithub();
+      if (user) {
+        navigate('/dashboard');
+      }
     } catch (err) {
-      setError(err.message);
+      if (err?.message) setError(err.message);
     }
   };
 
@@ -157,7 +165,7 @@ export default function Signup() {
             ))}
           </div>
           <p className="text-xs text-(--text-muted) mt-2 flex items-center gap-1">
-            {strength >= 3 ? <Check size={12} className="text-green-500" /> : <div className="w-1 h-1 rounded-full bg-(--text-muted) ml-1 mr-0.5" />}
+            {strength >= 3 ? <Check size={12} className="text-green-500" /> : <span className="inline-block w-1 h-1 rounded-full bg-(--text-muted) ml-1 mr-0.5" />}
             Must be at least 6 characters with a number and symbol.
           </p>
         </div>

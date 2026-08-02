@@ -20,6 +20,7 @@ function cleanExtractedText(raw) {
 
   let text = raw
     // Remove null bytes and control characters (except newlines)
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x09\x0B\x0C\x0E-\x1F\x7F]/g, '')
     // Normalize various dash/hyphen characters
     .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-')

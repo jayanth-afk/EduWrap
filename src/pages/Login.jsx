@@ -49,20 +49,27 @@ export default function Login() {
 
   const handleGoogleLogin = async () => {
     setError('');
+    clearError();
     try {
-      await loginWithGoogle();
-      // signInWithRedirect navigates away — onAuthStateChanged handles the rest
+      const user = await loginWithGoogle();
+      if (user) {
+        navigate('/dashboard');
+      }
     } catch (err) {
-      setError(err.message);
+      if (err?.message) setError(err.message);
     }
   };
 
   const handleGithubLogin = async () => {
     setError('');
+    clearError();
     try {
-      await loginWithGithub();
+      const user = await loginWithGithub();
+      if (user) {
+        navigate('/dashboard');
+      }
     } catch (err) {
-      setError(err.message);
+      if (err?.message) setError(err.message);
     }
   };
 

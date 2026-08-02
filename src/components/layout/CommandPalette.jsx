@@ -2,13 +2,18 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Search, LayoutDashboard, Users, FileText, Settings, User } from 'lucide-react';
+import { Search, LayoutDashboard, Users, FileText, Settings, User, Layers, HelpCircle, MessageCircleQuestion, Folder, Terminal } from 'lucide-react';
 import { Input } from '../ui/Input';
 
 const COMMANDS = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Go to Dashboard', to: '/dashboard' },
   { id: 'rooms', icon: Users, label: 'Go to Study Rooms', to: '/rooms' },
   { id: 'notes', icon: FileText, label: 'Go to Notes', to: '/notes' },
+  { id: 'flashcards', icon: Layers, label: 'Go to Flashcards', to: '/flashcards' },
+  { id: 'quiz', icon: HelpCircle, label: 'Go to Quizzes', to: '/quiz' },
+  { id: 'doubts', icon: MessageCircleQuestion, label: 'Go to Doubts & Discussions', to: '/doubts' },
+  { id: 'files', icon: Folder, label: 'Go to Files & Resources', to: '/files' },
+  { id: 'sandbox', icon: Terminal, label: 'Go to Code Sandbox', to: '/sandbox' },
   { id: 'profile', icon: User, label: 'My Profile', to: '/profile' },
   { id: 'settings', icon: Settings, label: 'Settings', to: '/settings' },
 ];
