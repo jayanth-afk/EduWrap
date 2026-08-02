@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   ArrowRight, BookOpen, MessageSquare, Users, Sparkles, 
@@ -308,9 +308,9 @@ export default function Landing() {
             <span className="font-bold text-xl tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>EduWrap</span>
           </div>
           <div className="flex gap-6 text-sm text-(--text-secondary)">
-            <a href="#" className="hover:text-(--text-primary)">Privacy Policy</a>
-            <a href="#" className="hover:text-(--text-primary)">Terms of Service</a>
-            <a href="#" className="hover:text-(--text-primary)">Contact Support</a>
+            <Link to="/privacy" className="hover:text-(--text-primary) transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="hover:text-(--text-primary) transition-colors">Terms of Service</Link>
+            <a href="mailto:support@eduwrap.app" className="hover:text-(--text-primary) transition-colors">Contact Support</a>
           </div>
           <p className="text-sm text-(--text-muted)">
             © 2026 EduWrap Inc. All rights reserved.

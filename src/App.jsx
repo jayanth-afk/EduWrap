@@ -18,6 +18,8 @@ const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Login = lazy(() => import('./pages/Login'));
 const Signup = lazy(() => import('./pages/Signup'));
 const Onboarding = lazy(() => import('./pages/Onboarding'));
+const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
+const TermsOfService = lazy(() => import('./pages/TermsOfService'));
 
 // Lazy-loaded pages — code-split for better initial load
 const Rooms = lazy(() => import('./pages/Rooms'));
@@ -94,6 +96,8 @@ export default function App() {
                           <Routes>
                             {/* Public — no AppLayout */}
                             <Route path="/" element={<Landing />} />
+                            <Route path="/privacy" element={<PrivacyPolicy />} />
+                            <Route path="/terms" element={<TermsOfService />} />
 
                             {/* Auth Routes */}
                             <Route element={<AuthLayout />}>

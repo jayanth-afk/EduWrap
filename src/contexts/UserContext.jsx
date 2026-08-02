@@ -5,11 +5,14 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
+  signInWithCredential,
   getRedirectResult,
   fetchSignInMethodsForEmail,
   linkWithCredential,
   GoogleAuthProvider,
   GithubAuthProvider,
+  FacebookAuthProvider,
+  OAuthProvider,
   signOut,
   updateProfile,
 } from 'firebase/auth';
@@ -30,6 +33,14 @@ const githubProvider = new GithubAuthProvider();
 githubProvider.addScope('read:user');
 githubProvider.addScope('user:email');
 
+const appleProvider = new OAuthProvider('apple.com');
+appleProvider.addScope('email');
+appleProvider.addScope('name');
+
+const facebookProvider = new FacebookAuthProvider();
+facebookProvider.addScope('email');
+facebookProvider.addScope('public_profile');
+
 export function UserProvider({ children }) {
   const [session, setSession] = useState({
     isLoggedIn: false,
@@ -37,6 +48,37 @@ export function UserProvider({ children }) {
     loading: true,  // true until auth state is resolved
     error: null,
   });
+
+  // ─── FACEBOOK SDK LOGIN STATUS SYNC ───
+  useEffect(() => {
+    window.statusChangeCallback = async (response) => {
+      if (response && response.status === 'connected' && response.authResponse?.accessToken) {
+        if (!auth.currentUser) {
+          try {
+            const credential = FacebookAuthProvider.credential(response.authResponse.accessToken);
+            await signInWithCredential(auth, credential);
+          } catch (fbSyncErr) {
+            console.warn('Facebook SDK auto sign-in notice:', fbSyncErr?.code, fbSyncErr?.message);
+          }
+        }
+      }
+    };
+
+    window.checkLoginState = function() {
+      if (window.FB && typeof window.FB.getLoginStatus === 'function') {
+        window.FB.getLoginStatus((response) => {
+          if (typeof window.statusChangeCallback === 'function') {
+            window.statusChangeCallback(response);
+          }
+        });
+      }
+    };
+
+    // If FB is already loaded on page before component mount
+    if (window.FB && typeof window.FB.getLoginStatus === 'function') {
+      window.checkLoginState();
+    }
+  }, []);
 
   // ─── HANDLE REDIRECT RESULT (runs once on mount after redirect) ───
   useEffect(() => {
@@ -384,6 +426,134 @@ export function UserProvider({ children }) {
     }
   }, []);
 
+  // ─── APPLE LOGIN (popup with redirect fallback) ───
+  const loginWithApple = useCallback(async () => {
+    setSession(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const result = await signInWithPopup(auth, appleProvider);
+      const firebaseUser = result.user;
+
+      const baseUser = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Scholar'),
+        email: firebaseUser.email || '',
+        avatar: firebaseUser.photoURL || null,
+        xp: 0,
+        level: 1,
+        streak: 0,
+        subjects: [],
+        studyPreferences: {},
+      };
+
+      setSession({
+        isLoggedIn: true,
+        user: baseUser,
+        loading: false,
+        error: null,
+      });
+
+      try {
+        const existing = await fetchDoc(userDoc(firebaseUser.uid));
+        if (!existing) {
+          await createDocWithId(userDoc(firebaseUser.uid), {
+            ...baseUser,
+            onboardingCompleted: false,
+          });
+        } else {
+          setSession(prev => ({
+            ...prev,
+            user: { ...baseUser, ...existing },
+          }));
+        }
+      } catch (docErr) {
+        console.warn('Firestore profile sync skipped or failed:', docErr);
+      }
+
+      return firebaseUser;
+    } catch (err) {
+      console.error('Apple login error:', err.code, err.message, err);
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+        try {
+          await signInWithRedirect(auth, appleProvider);
+          return;
+        } catch (redirectErr) {
+          console.error('Apple redirect fallback error:', redirectErr);
+        }
+      }
+      if (err.code === 'auth/popup-closed-by-user') {
+        setSession(prev => ({ ...prev, loading: false, error: null }));
+        return;
+      }
+      const message = getAuthErrorMessage(err.code);
+      setSession(prev => ({ ...prev, loading: false, error: message }));
+      throw new Error(message);
+    }
+  }, []);
+
+  // ─── FACEBOOK LOGIN (popup with redirect fallback) ───
+  const loginWithFacebook = useCallback(async () => {
+    setSession(prev => ({ ...prev, loading: true, error: null }));
+    try {
+      const result = await signInWithPopup(auth, facebookProvider);
+      const firebaseUser = result.user;
+
+      const baseUser = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Scholar'),
+        email: firebaseUser.email || '',
+        avatar: firebaseUser.photoURL || null,
+        xp: 0,
+        level: 1,
+        streak: 0,
+        subjects: [],
+        studyPreferences: {},
+      };
+
+      setSession({
+        isLoggedIn: true,
+        user: baseUser,
+        loading: false,
+        error: null,
+      });
+
+      try {
+        const existing = await fetchDoc(userDoc(firebaseUser.uid));
+        if (!existing) {
+          await createDocWithId(userDoc(firebaseUser.uid), {
+            ...baseUser,
+            onboardingCompleted: false,
+          });
+        } else {
+          setSession(prev => ({
+            ...prev,
+            user: { ...baseUser, ...existing },
+          }));
+        }
+      } catch (docErr) {
+        console.warn('Firestore profile sync skipped or failed:', docErr);
+      }
+
+      return firebaseUser;
+    } catch (err) {
+      console.error('Facebook login error:', err?.code, err?.message, err);
+      if (err.code === 'auth/popup-blocked' || err.code === 'auth/cancelled-popup-request') {
+        try {
+          await signInWithRedirect(auth, facebookProvider);
+          return;
+        } catch (redirectErr) {
+          console.error('Facebook redirect fallback error:', redirectErr);
+        }
+      }
+      if (err.code === 'auth/popup-closed-by-user') {
+        setSession(prev => ({ ...prev, loading: false, error: null }));
+        return;
+      }
+      const message = getAuthErrorMessage(err.code, err.message);
+      setSession(prev => ({ ...prev, loading: false, error: message }));
+      throw new Error(message);
+    }
+  }, []);
+
   // ─── UPDATE USER PROFILE ───
   const updateUser = useCallback(async (updates) => {
     if (!session.user?.id) return;
@@ -421,6 +591,8 @@ export function UserProvider({ children }) {
       signup,
       loginWithGoogle,
       loginWithGithub,
+      loginWithApple,
+      loginWithFacebook,
       updateUser,
       logout,
       clearError,
@@ -437,7 +609,7 @@ export function useUser() {
 }
 
 // ─── ERROR MESSAGE MAPPING ───
-function getAuthErrorMessage(code) {
+function getAuthErrorMessage(code, defaultMessage = '') {
   const messages = {
     'auth/user-not-found': 'No account found with this email.',
     'auth/wrong-password': 'Incorrect password. Try again.',
@@ -448,7 +620,12 @@ function getAuthErrorMessage(code) {
     'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
     'auth/network-request-failed': 'Network error. Check your connection.',
     'auth/popup-closed-by-user': 'Sign-in popup was closed.',
-    'auth/account-exists-with-different-credential': 'An account with this email already exists under a different sign-in method (e.g. Google or Email/Password). Please sign in using your original method.',
+    'auth/operation-not-allowed': 'Facebook sign-in is not enabled in your Firebase Authentication console. Please go to Firebase Console > Authentication > Sign-in method and enable Facebook.',
+    'auth/unauthorized-domain': 'This domain is not authorized in your Firebase Authentication console. Add localhost to Authorized domains in Firebase.',
+    'auth/account-exists-with-different-credential': 'An account with this email already exists under a different sign-in method (e.g. Google, GitHub, or Email/Password). Please sign in using your original method.',
+    'auth/popup-blocked': 'Sign-in popup was blocked by your browser. Please allow popups for this site.',
+    'auth/cancelled-popup-request': 'Sign-in process was interrupted.',
+    'auth/configuration-not-found': 'Authentication provider configuration not found in Firebase.',
   };
-  return messages[code] || 'Something went wrong. Please try again.';
+  return messages[code] || defaultMessage || 'Authentication failed. Please try again.';
 }
