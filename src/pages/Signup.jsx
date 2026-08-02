@@ -65,7 +65,6 @@ export default function Signup() {
     setError('');
     try {
       await loginWithGoogle();
-      navigate('/onboarding');
     } catch (err) {
       setError(err.message);
     }
@@ -75,7 +74,6 @@ export default function Signup() {
     setError('');
     try {
       await loginWithGithub();
-      navigate('/onboarding');
     } catch (err) {
       setError(err.message);
     }

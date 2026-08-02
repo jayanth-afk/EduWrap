@@ -51,7 +51,7 @@ export default function Login() {
     setError('');
     try {
       await loginWithGoogle();
-      navigate('/dashboard');
+      // signInWithRedirect navigates away — onAuthStateChanged handles the rest
     } catch (err) {
       setError(err.message);
     }
@@ -61,7 +61,6 @@ export default function Login() {
     setError('');
     try {
       await loginWithGithub();
-      navigate('/dashboard');
     } catch (err) {
       setError(err.message);
     }
