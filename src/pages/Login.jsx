@@ -143,6 +143,12 @@ export default function Login() {
         Back to home
       </button>
 
+      {/* Mobile Brand Header */}
+      <div className="flex lg:hidden items-center gap-2.5 mb-6">
+        <img src="/logo-icon.png" alt="EduWrap" className="w-9 h-9 rounded-xl object-cover shadow-(--shadow-glow) ring-1 ring-white/10" />
+        <span className="font-bold text-xl tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>EduWrap</span>
+      </div>
+
       <div className="mb-8">
         <h2 className="text-3xl font-bold mb-2">Welcome back</h2>
         <p className="text-(--text-secondary)">Enter your credentials to access your workspace.</p>

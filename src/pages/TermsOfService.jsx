@@ -67,9 +67,11 @@ export default function TermsOfService() {
       <header className="sticky top-0 z-40 backdrop-blur-xl bg-(--bg-surface)/80 border-b border-(--border-default) px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 rounded-xl bg-[color:oklch(0.58_0.22_var(--accent-hue))] text-white flex items-center justify-center font-bold text-sm shadow-md group-hover:scale-105 transition-transform">
-              EW
-            </div>
+            <img 
+              src="/logo-icon.png" 
+              alt="EduWrap" 
+              className="w-9 h-9 rounded-xl object-cover shadow-md group-hover:scale-105 transition-transform" 
+            />
             <span className="font-bold text-xl tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>EduWrap</span>
           </Link>
 

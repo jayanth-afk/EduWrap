@@ -22,9 +22,11 @@ export default function AuthLayout() {
         />
 
         <div className="relative z-10 text-center max-w-md">
-          <div className="w-16 h-16 mx-auto mb-8 rounded-2xl bg-gradient-to-br from-[color:oklch(0.58_0.22_var(--accent-hue))] to-[color:oklch(0.50_0.22_var(--accent-hue))] text-white flex items-center justify-center font-bold text-2xl shadow-(--shadow-glow)">
-            EW
-          </div>
+          <img 
+            src="/logo-icon.png" 
+            alt="EduWrap" 
+            className="w-24 h-24 mx-auto mb-6 rounded-3xl object-cover shadow-(--shadow-glow) ring-2 ring-white/10 hover:scale-105 transition-transform" 
+          />
           <h1 className="text-4xl font-bold mb-4" style={{ fontFamily: 'var(--font-display)' }}>
             Your Study OS
           </h1>

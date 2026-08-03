@@ -91,9 +91,11 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-6">
           <div className={`flex items-center justify-between rounded-2xl px-4 py-2.5 transition-all duration-300 ${scrolled ? 'bg-(--bg-elevated)/95 border border-(--border-strong) shadow-(--shadow-md)' : 'bg-transparent border-transparent'}`}>
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[color:oklch(0.58_0.22_var(--accent-hue))] to-[color:oklch(0.50_0.22_var(--accent-hue))] text-white flex items-center justify-center font-bold text-sm shadow-(--shadow-glow)">
-                EW
-              </div>
+              <img 
+                src="/logo-icon.png" 
+                alt="EduWrap" 
+                className="w-9 h-9 rounded-xl object-cover shadow-(--shadow-glow) ring-1 ring-white/10" 
+              />
               <span className="font-bold text-lg hidden sm:block" style={{ fontFamily: 'var(--font-display)' }}>EduWrap</span>
             </div>
             
@@ -302,9 +304,11 @@ export default function Landing() {
       <footer className="relative z-10 border-t border-(--border-default) bg-(--bg-surface) py-12 px-6">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-3 opacity-80 hover:opacity-100 transition-opacity">
-            <div className="w-8 h-8 rounded-lg bg-[color:oklch(0.58_0.22_var(--accent-hue))] text-white flex items-center justify-center font-bold text-xs">
-              EW
-            </div>
+            <img 
+              src="/logo-icon.png" 
+              alt="EduWrap" 
+              className="w-8 h-8 rounded-lg object-cover shadow-sm" 
+            />
             <span className="font-bold text-xl tracking-tight" style={{ fontFamily: 'var(--font-display)' }}>EduWrap</span>
           </div>
           <div className="flex gap-6 text-sm text-(--text-secondary)">
