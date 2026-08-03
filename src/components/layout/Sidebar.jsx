@@ -9,6 +9,8 @@ import { Tooltip } from '../ui/Tooltip';
 import { CountBadge } from '../ui/Badge';
 import { useUser } from '../../contexts/UserContext';
 
+import { prefetchRoute } from '../../utils/routePrefetch';
+
 const NAV_ITEMS = [
   { to: '/dashboard',  icon: LayoutDashboard,       label: 'Dashboard' },
   { to: '/rooms',      icon: Users,                 label: 'Study Rooms', badge: 2 },
@@ -29,6 +31,7 @@ function NavItem({ to, icon: Icon, label, badge, isCollapsed, onClick, className
     <NavLink
       to={to}
       onClick={onClick}
+      onMouseEnter={() => prefetchRoute(to)}
       className={({ isActive }) =>
         `relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-all duration-200 group overflow-hidden
          ${isActive

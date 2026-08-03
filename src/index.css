@@ -192,3 +192,20 @@
   scrollbar-width: none;
 }
 
+/* ─── PERFORMANCE & GPU ACCELERATION ─── */
+.transform-gpu {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.will-change-transform {
+  will-change: transform, opacity;
+}
+
+/* Smooth layout scrolling */
+main {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+

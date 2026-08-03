@@ -13,42 +13,6 @@
   </head>
   <body>
     <div id="root"></div>
-
-    <!-- Facebook SDK for JavaScript -->
-    <script>
-      function checkLoginState() {
-        if (window.FB && typeof window.FB.getLoginStatus === 'function') {
-          FB.getLoginStatus(function(response) {
-            if (typeof window.statusChangeCallback === 'function') {
-              window.statusChangeCallback(response);
-            }
-          });
-        }
-      }
-
-      window.fbAsyncInit = function() {
-        FB.init({
-          appId      : '{your-app-id}',
-          cookie     : true,
-          xfbml      : true,
-          version    : 'v20.0'
-        });
-          
-        FB.AppEvents.logPageView();   
-
-        // Check login status on page load
-        checkLoginState();
-      };
-
-      (function(d, s, id){
-         var js, fjs = d.getElementsByTagName(s)[0];
-         if (d.getElementById(id)) {return;}
-         js = d.createElement(s); js.id = id;
-         js.src = "https://connect.facebook.net/en_US/sdk.js";
-         fjs.parentNode.insertBefore(js, fjs);
-       }(document, 'script', 'facebook-jssdk'));
-    </script>
-
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

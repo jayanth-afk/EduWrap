@@ -121,34 +121,45 @@ export function NotesProvider({ children }) {
     return () => unsubscribe();
   }, [uid]);
 
-  // ─── Background PDF text indexing (cached in IndexedDB) ───
+  // ─── On-demand PDF text indexing (only for active note, cached in IndexedDB) ───
   useEffect(() => {
-    if (notes.length === 0) return;
+    if (!activeNoteId) return;
+    const currentNote = notes.find(n => n.id === activeNoteId);
+    if (!currentNote || currentNote.type !== 'pdf' || !currentNote.url) return;
+    if (indexingStatus[activeNoteId] === 'done' || indexingStatus[activeNoteId] === 'indexing') return;
 
-    const indexPDFs = async () => {
-      const version = localStorage.getItem('eduwrap_pdf_cache_version');
-      if (version !== '6') {
-        await clearAllPDFText().catch(() => {});
-        localStorage.setItem('eduwrap_pdf_cache_version', '6');
-      }
-
-      for (const note of notes) {
-        if (note.type === 'pdf' && note.url && !indexingStatus[note.id]) {
-          try {
-            setIndexingStatus(prev => ({ ...prev, [note.id]: 'indexing' }));
-            await processPDFFromUrl(note.id, note.url);
-            setIndexingStatus(prev => ({ ...prev, [note.id]: 'done' }));
-          } catch (e) {
-            console.warn(`PDF indexing deferred for ${note.title}:`, e);
-            setIndexingStatus(prev => ({ ...prev, [note.id]: 'done' }));
+    let isCancelled = false;
+    const scheduleIndex = () => {
+      if (isCancelled) return;
+      setIndexingStatus(prev => ({ ...prev, [activeNoteId]: 'indexing' }));
+      processPDFFromUrl(activeNoteId, currentNote.url)
+        .then(() => {
+          if (!isCancelled) {
+            setIndexingStatus(prev => ({ ...prev, [activeNoteId]: 'done' }));
           }
-        }
-      }
+        })
+        .catch((e) => {
+          console.warn(`PDF indexing deferred for ${currentNote.title}:`, e);
+          if (!isCancelled) {
+            setIndexingStatus(prev => ({ ...prev, [activeNoteId]: 'done' }));
+          }
+        });
     };
 
-    const timer = setTimeout(indexPDFs, 1000);
-    return () => clearTimeout(timer);
-  }, [notes]);
+    if ('requestIdleCallback' in window) {
+      const idleId = window.requestIdleCallback(scheduleIndex, { timeout: 3000 });
+      return () => {
+        isCancelled = true;
+        window.cancelIdleCallback(idleId);
+      };
+    } else {
+      const timer = setTimeout(scheduleIndex, 1000);
+      return () => {
+        isCancelled = true;
+        clearTimeout(timer);
+      };
+    }
+  }, [activeNoteId, notes, indexingStatus]);
 
   // ─── ADD NOTE (Text/Markdown) ───
   const addNote = useCallback(async (initialData = {}) => {

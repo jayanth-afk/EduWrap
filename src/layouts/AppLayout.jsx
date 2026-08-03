@@ -1,15 +1,26 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import Sidebar from '../components/layout/Sidebar';
 import Topbar from '../components/layout/Topbar';
 import CommandPalette from '../components/layout/CommandPalette';
+import { prefetchAllRoutesIdle } from '../utils/routePrefetch';
+
+function ContentLoader() {
+  return (
+    <div className="flex-1 flex items-center justify-center min-h-[400px]">
+      <div className="flex flex-col items-center gap-3">
+        <div className="w-8 h-8 border-2 border-(--border-default) border-t-[color:oklch(0.58_0.22_var(--accent-hue))] rounded-full animate-spin" />
+        <span className="text-xs text-(--text-muted) font-medium">Loading content...</span>
+      </div>
+    </div>
+  );
+}
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false); // Mobile drawer
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => {
-    // Desktop collapsible
     return localStorage.getItem('ew_sidebar_collapsed') === 'true';
   });
   const location = useLocation();
@@ -34,6 +45,11 @@ export default function AppLayout() {
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  // Prefetch primary route chunks in background when browser is idle
+  useEffect(() => {
+    prefetchAllRoutesIdle();
+  }, []);
 
   return (
     <div className="flex h-screen overflow-hidden bg-(--bg-base) text-(--text-primary)">
@@ -65,20 +81,19 @@ export default function AppLayout() {
           onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         />
         
-        {/* Page Content with AnimatePresence for transitions */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.2 }}
-              className="absolute inset-0 flex flex-col will-change-transform transform-gpu"
-            >
+        {/* Page Content with Instant, Butter-Smooth GPU-accelerated transition */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden relative flex flex-col">
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.12, ease: 'easeOut' }}
+            className="flex-1 flex flex-col min-w-0 h-full transform-gpu"
+          >
+            <Suspense fallback={<ContentLoader />}>
               <Outlet />
-            </motion.div>
-          </AnimatePresence>
+            </Suspense>
+          </motion.div>
         </main>
       </div>
 
