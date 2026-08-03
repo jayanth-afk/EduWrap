@@ -17,13 +17,14 @@ const CATEGORIES = [
 
 export default function Rooms() {
   const navigate = useNavigate();
-  const { rooms, setActiveRoom, addRoom, deleteRoom } = useRoom();
+  const { rooms, setActiveRoom, addRoom, joinRoom, deleteRoom } = useRoom();
   const [activeCategory, setActiveCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [inviteCode, setInviteCode] = useState('');
   const [joinState, setJoinState] = useState('idle'); // idle, loading, success
+  const [joinError, setJoinError] = useState('');
 
   // New Room Form State
   const [newRoomData, setNewRoomData] = useState({
@@ -36,54 +37,71 @@ export default function Rooms() {
   const [createState, setCreateState] = useState('idle');
 
   const filteredRooms = rooms.filter(room => {
-    const matchesSearch = room.name.toLowerCase().includes(searchQuery.toLowerCase()) || room.tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
+    const tags = Array.isArray(room.tags) ? room.tags : [];
+    const matchesSearch = (room.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || tags.some(t => t.toLowerCase().includes(searchQuery.toLowerCase()));
     if (activeCategory === 'personal') {
       return room.isPersonal && matchesSearch;
     }
-    const matchesCat = activeCategory === 'all' || room.category.toLowerCase().includes(activeCategory.toLowerCase()) || activeCategory === room.id.slice(5, 8); // simplified matching
+    const matchesCat = activeCategory === 'all' || (room.category || '').toLowerCase().includes(activeCategory.toLowerCase()) || activeCategory === room.id.slice(5, 8); // simplified matching
     return matchesCat && matchesSearch;
   });
 
-  const handleJoinSubmit = (e) => {
+  const handleJoinSubmit = async (e) => {
     e.preventDefault();
-    if (!inviteCode.trim()) return;
+    const code = inviteCode.trim().toUpperCase();
+    if (!code) return;
     setJoinState('loading');
+    setJoinError('');
     
-    // Simulate network delay and join logic
-    setTimeout(() => {
-      setJoinState('success');
-      setTimeout(() => {
-        setIsJoinModalOpen(false);
+    try {
+      const matchingRoom = rooms.find(r => (r.inviteCode && r.inviteCode.toUpperCase() === code) || r.id === inviteCode.trim());
+      if (matchingRoom) {
+        await joinRoom(matchingRoom.id);
+        setJoinState('success');
+        setTimeout(() => {
+          setIsJoinModalOpen(false);
+          setJoinState('idle');
+          setInviteCode('');
+          setActiveRoom(matchingRoom.id);
+          navigate(`/room/${matchingRoom.id}`);
+        }, 800);
+      } else {
         setJoinState('idle');
-        setInviteCode('');
-        // In a real app we'd add the room, here we'll just navigate to the first available room as a mock
-        setActiveRoom(rooms[0].id);
-        navigate(`/room/${rooms[0].id}`);
-      }, 1000);
-    }, 1500);
+        setJoinError('Room not found with this code. Please verify the invite code.');
+      }
+    } catch (err) {
+      console.error('Failed to join room:', err);
+      setJoinState('idle');
+      setJoinError('An error occurred while joining. Please try again.');
+    }
   };
 
-  const handleCreateSubmit = (e) => {
+  const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!newRoomData.name.trim()) return;
     setCreateState('loading');
     
-    setTimeout(() => {
+    try {
+      const roomId = await addRoom({
+        ...newRoomData,
+        tags: newRoomData.tags.split(',').map(t => t.trim()).filter(Boolean)
+      });
+      
       setCreateState('success');
       setTimeout(() => {
-        const roomId = addRoom({
-          ...newRoomData,
-          tags: newRoomData.tags.split(',').map(t => t.trim()).filter(t => t)
-        });
-        
         setIsCreateModalOpen(false);
         setCreateState('idle');
         setNewRoomData({ name: '', category: 'Engineering', icon: '🚀', description: '', tags: '' });
         
-        setActiveRoom(roomId);
-        navigate(`/room/${roomId}`);
-      }, 1000);
-    }, 1500);
+        if (roomId) {
+          setActiveRoom(roomId);
+          navigate(`/room/${roomId}`);
+        }
+      }, 800);
+    } catch (err) {
+      console.error('Failed to create room:', err);
+      setCreateState('idle');
+    }
   };
 
   const handleEnterRoom = (roomId) => {
@@ -273,11 +291,14 @@ export default function Rooms() {
                     <input 
                       type="text" 
                       value={inviteCode}
-                      onChange={(e) => setInviteCode(e.target.value)}
+                      onChange={(e) => { setInviteCode(e.target.value); setJoinError(''); }}
                       placeholder="e.g. CS50-WINTER-26" 
                       className="w-full bg-(--bg-elevated) border border-(--border-strong) rounded-xl p-4 text-center font-mono text-lg focus:outline-none focus:border-[color:oklch(0.58_0.22_var(--accent-hue))] focus:ring-1 focus:ring-[color:oklch(0.58_0.22_var(--accent-hue))] transition-all tracking-wider"
                       autoFocus
                     />
+                    {joinError && (
+                      <p className="text-xs text-red-400 mt-2 text-center">{joinError}</p>
+                    )}
                   </div>
                   <Button type="submit" variant="primary" className="w-full h-12 text-base">
                     Join Ecosystem

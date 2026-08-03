@@ -27,6 +27,7 @@ import {
   arrayRemove,
 } from 'firebase/firestore';
 import { db } from './firebaseConfig';
+export { db };
 
 // ─── COLLECTION REFERENCES ───
 
@@ -44,6 +45,7 @@ export const filesRef = collection(db, 'files');
 export const roomClassrooms = (roomId) => collection(db, 'rooms', roomId, 'classrooms');
 export const roomMembers = (roomId) => collection(db, 'rooms', roomId, 'members');
 export const roomMessages = (roomId) => collection(db, 'rooms', roomId, 'messages');
+export const roomTasks = (roomId) => collection(db, 'rooms', roomId, 'tasks');
 
 /** Get a subcollection reference inside a doubt */
 export const doubtAnswers = (doubtId) => collection(db, 'doubts', doubtId, 'answers');

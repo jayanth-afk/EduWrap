@@ -2,35 +2,93 @@ import { useState, useRef, useEffect } from 'react';
 import { Send, Smile, Paperclip, Sparkles, MoreHorizontal } from 'lucide-react';
 import { Avatar } from '../../../components/ui/Avatar';
 import { useRoom } from '../../../contexts/RoomContext';
+import { useUser } from '../../../contexts/UserContext';
+import { 
+  roomMessages, 
+  createDoc, 
+  safeOnSnapshot, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  serverTimestamp, 
+  timeAgo 
+} from '../../../firebase/firestore';
+
+const DEFAULT_MESSAGES = [
+  { id: 'm1', author: 'Dr. House', avatar: 'D', role: 'admin', text: 'Welcome to the discussion board. Keep it civil.', time: '10:00 AM' },
+  { id: 'm2', author: 'Sarah Jenkins', avatar: 'S', role: 'member', text: 'Did anyone understand the last lecture?', time: '10:45 AM' },
+  { id: 'm3', author: 'Alex Chen', avatar: 'A', role: 'member', text: 'Mostly, but the part about thermodynamics was confusing.', time: '10:47 AM' },
+];
 
 export default function DiscussionWorkspace() {
   const { activeRoom, activeClassroom } = useRoom();
+  const { user } = useUser();
   const [input, setInput] = useState('');
+  const [messages, setMessages] = useState(DEFAULT_MESSAGES);
   const bottomRef = useRef(null);
 
-  // Mock messages
-  const [messages, setMessages] = useState([
-    { id: 1, author: 'Dr. House', avatar: 'D', role: 'admin', text: 'Welcome to the discussion board. Keep it civil.', time: '10:00 AM' },
-    { id: 2, author: 'Sarah Jenkins', avatar: 'S', role: 'admin', text: 'Did anyone understand the last lecture?', time: '10:45 AM' },
-    { id: 3, author: 'Alex Chen', avatar: 'A', role: 'member', text: 'Mostly, but the part about thermodynamics was confusing.', time: '10:47 AM' },
-  ]);
+  const roomId = activeRoom?.id;
+  const classroomId = activeClassroom?.id;
+
+  // Real-time Firestore sync for room messages
+  useEffect(() => {
+    if (!roomId) return;
+
+    const q = query(roomMessages(roomId), orderBy('createdAt', 'asc'), limit(50));
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        const firestoreMsgs = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          time: timeAgo(d.data().createdAt),
+        }));
+        // Filter by classroom if tagged, or show all room messages
+        const relevant = firestoreMsgs.filter(m => !m.classroomId || m.classroomId === classroomId);
+        setMessages(relevant.length > 0 ? relevant : DEFAULT_MESSAGES);
+      }
+    }, (err) => {
+      console.warn('Discussion messages listener:', err);
+    });
+
+    return () => unsubscribe();
+  }, [roomId, classroomId]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, activeClassroom?.typing]);
 
-  const handleSend = (e) => {
+  const handleSend = async (e) => {
     e.preventDefault();
     if (!input.trim()) return;
-    setMessages(prev => [...prev, {
-      id: Date.now(),
-      author: 'You',
-      avatar: 'Y',
-      role: 'member',
-      text: input,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    }]);
+
+    const textToSend = input.trim();
     setInput('');
+
+    const newMsg = {
+      author: user?.name || 'You',
+      avatar: (user?.name?.[0] || 'Y').toUpperCase(),
+      role: 'member',
+      text: textToSend,
+      classroomId: classroomId || null,
+      userId: user?.id || 'anonymous',
+      createdAt: serverTimestamp(),
+    };
+
+    // Optimistic UI update
+    setMessages(prev => [...prev, {
+      ...newMsg,
+      id: `temp-${Date.now()}`,
+      time: 'just now',
+    }]);
+
+    if (roomId) {
+      try {
+        await createDoc(roomMessages(roomId), newMsg);
+      } catch (err) {
+        console.error('Failed to send discussion message:', err);
+      }
+    }
   };
 
   if (!activeClassroom) return null;

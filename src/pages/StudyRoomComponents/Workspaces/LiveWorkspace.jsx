@@ -25,14 +25,20 @@ export default function LiveWorkspace() {
     }
   };
 
+  const [notification, setNotification] = useState(null);
+
+  const showNotification = (msg) => {
+    setNotification(msg);
+    setTimeout(() => setNotification(null), 3000);
+  };
+
   const handleUploadPdf = () => {
-    // Simulated PDF upload
     setPresentedPdf({
       title: 'Chapter_4_Kinematics.pdf',
       url: '#',
       pages: 12
     });
-    alert("Note uploaded successfully! A copy has been saved to the Classroom Resources folder.");
+    showNotification("Note uploaded successfully! Saved to Classroom Resources.");
   };
 
   return (
@@ -63,14 +69,19 @@ export default function LiveWorkspace() {
                   <span className="text-sm font-medium text-gray-800">{presentedPdf.title}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => alert("Downloading PDF...")} className="p-1.5 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors" title="Download Notes">
+                  <button onClick={() => showNotification("Downloading PDF notes...")} className="p-1.5 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer" title="Download Notes">
                     <Download size={16} />
                   </button>
-                  <button onClick={() => setPresentedPdf(null)} className="p-1.5 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors" title="Stop Presenting">
+                  <button onClick={() => setPresentedPdf(null)} className="p-1.5 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors cursor-pointer" title="Stop Presenting">
                     <X size={16} />
                   </button>
                 </div>
               </div>
+              {notification && (
+                <div className="bg-green-600 text-white text-xs font-semibold px-4 py-1.5 text-center transition-all">
+                  {notification}
+                </div>
+              )}
               <div className="flex-1 bg-gray-50 flex items-center justify-center p-8">
                 {/* Simulated PDF Content */}
                 <div className="w-full max-w-2xl bg-white shadow-md aspect-[1/1.4] p-12 text-gray-800 flex flex-col">
