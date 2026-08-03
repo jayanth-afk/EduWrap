@@ -5,8 +5,15 @@ import { Avatar } from '../../components/ui/Avatar';
 const TYPE_ICONS = { pdf: FileText, image: Image, video: Video, doc: FileText, code: Code };
 const TYPE_COLORS = { pdf: 'text-red-500', image: 'text-blue-500', video: 'text-purple-500', doc: 'text-sky-500', code: 'text-emerald-500' };
 
-export default function FilesRightSidebar({ storageUsed, storageTotal, filesByType, totalFiles, activity, starredFiles }) {
-  const usedPercent = Math.min(((parseFloat(storageUsed) / 5000) * 100), 100);
+export default function FilesRightSidebar({
+  storageUsed = '0 MB',
+  storageTotal = '5.0 GB',
+  filesByType = {},
+  totalFiles = 0,
+  activity = [],
+  starredFiles = []
+}) {
+  const usedPercent = Math.min(((parseFloat(storageUsed || 0) / 5000) * 100), 100);
 
   return (
     <div className="h-full flex flex-col gap-4 overflow-y-auto no-scrollbar p-4 bg-(--bg-elevated) border-l border-(--border-default)">
@@ -36,7 +43,7 @@ export default function FilesRightSidebar({ storageUsed, storageTotal, filesByTy
 
         {/* Type breakdown */}
         <div className="mt-3 space-y-1.5">
-          {Object.entries(filesByType).map(([type, count]) => {
+          {Object.entries(filesByType || {}).map(([type, count]) => {
             const Icon = TYPE_ICONS[type] || FileText;
             const color = TYPE_COLORS[type] || 'text-(--text-muted)';
             return (

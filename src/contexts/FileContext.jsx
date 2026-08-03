@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { useUser } from './UserContext';
 import {
   filesRef,
@@ -137,6 +137,13 @@ const DEFAULT_FOLDERS = [
   { id: 'f-notes', name: 'Lecture Notes & Slides', color: '#10b981', fileCount: 1 }
 ];
 
+const DEFAULT_ACTIVITY = [
+  { id: 'act-1', user: 'You', action: 'accessed', fileName: 'Advanced Data Structures & Algorithms Guide.pdf', time: '10 mins ago' },
+  { id: 'act-2', user: 'Alex', action: 'downloaded', fileName: 'Computer Systems Architecture & OS Principles.pdf', time: '1 hour ago' },
+  { id: 'act-3', user: 'Sarah', action: 'starred', fileName: 'Database Management Systems & SQL Fundamentals.pdf', time: '3 hours ago' },
+  { id: 'act-4', user: 'You', action: 'downloaded', fileName: 'Machine Learning & Neural Networks Handbook.pdf', time: 'Yesterday' },
+];
+
 const FileContext = createContext(null);
 
 export function FileProvider({ children }) {
@@ -145,7 +152,7 @@ export function FileProvider({ children }) {
 
   const [files, setFiles] = useState(DEFAULT_FILES);
   const [folders, setFolders] = useState(DEFAULT_FOLDERS);
-  const [activity, setActivity] = useState([]);
+  const [activity, setActivity] = useState(DEFAULT_ACTIVITY);
   const [loading, setLoading] = useState(false);
 
   // ─── REAL-TIME: Load user's files (limit 50 for zero-cost quota safety) ───
@@ -374,18 +381,44 @@ export function FileProvider({ children }) {
     } catch {}
   }, [uid]);
 
+  const totalSizeBytes = useMemo(() => {
+    return files.reduce((acc, f) => acc + (f.sizeBytes || 0), 0);
+  }, [files]);
+
+  const storageUsed = useMemo(() => {
+    const mb = (totalSizeBytes / (1024 * 1024)).toFixed(1);
+    return `${mb} MB`;
+  }, [totalSizeBytes]);
+
+  const storageTotal = '5.0 GB';
+  const totalFiles = files.length;
+
+  const filesByType = useMemo(() => {
+    const counts = { pdf: 0, image: 0, video: 0, doc: 0, code: 0 };
+    files.forEach(f => {
+      const t = f.type || 'doc';
+      counts[t] = (counts[t] || 0) + 1;
+    });
+    return counts;
+  }, [files]);
+
   return (
     <FileContext.Provider value={{
       files,
       folders,
       activity,
       loading,
+      storageUsed,
+      storageTotal,
+      totalFiles,
+      filesByType,
       addFile,
       toggleStar,
       togglePin,
       moveToFolder,
       deleteFile,
       recordDownload,
+      incrementDownload: recordDownload,
       createFolder,
       deleteFolder,
     }}>

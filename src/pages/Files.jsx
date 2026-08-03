@@ -99,8 +99,8 @@ function FilesContent() {
     setIsUploadOpen(true);
   }, []);
 
-  const handleUploadSubmit = (data) => {
-    addFile(data);
+  const handleUploadSubmit = (data, file) => {
+    addFile(data, file);
   };
 
   return (
@@ -243,9 +243,5 @@ function FilesContent() {
 }
 
 export default function Files() {
-  return (
-    <FileProvider>
-      <FilesContent />
-    </FileProvider>
-  );
+  return <FilesContent />;
 }
