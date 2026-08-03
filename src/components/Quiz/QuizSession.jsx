@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuiz } from '../../contexts/QuizContext';
-import { ArrowLeft, ArrowRight, Check, X, Trophy, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, X, Trophy, RotateCcw, Sparkles, Lightbulb, BrainCircuit } from 'lucide-react';
 
 export default function QuizSession() {
   const { quizzes, activeQuizId, setActiveQuizId, submitAnswer, finishQuiz, resetQuiz } = useQuiz();
@@ -252,6 +252,24 @@ export default function QuizSession() {
                 );
               })}
             </div>
+
+            {/* AI Explanation */}
+            {showResult && question.explanation && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+                className="mt-6 p-5 rounded-2xl bg-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.06)] border border-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.2)] backdrop-blur-md"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold text-[color:oklch(0.58_0.22_var(--accent-hue))] uppercase tracking-wider mb-1.5">
+                  <BrainCircuit className="w-4 h-4" />
+                  <span>AI Explanation</span>
+                </div>
+                <p className="text-sm text-(--text-secondary) leading-relaxed">
+                  {question.explanation}
+                </p>
+              </motion.div>
+            )}
 
             {/* Next button */}
             {showResult && (

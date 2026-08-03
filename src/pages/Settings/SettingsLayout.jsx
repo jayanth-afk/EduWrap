@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Palette, Bell, ShieldAlert, Flame } from 'lucide-react';
+import { User, Palette, Bell, ShieldAlert, Flame, BrainCircuit } from 'lucide-react';
 import AppearanceSettings from './AppearanceSettings';
 import ProfileSettings from './ProfileSettings';
 import NotificationSettings from './NotificationSettings';
 import FirebaseUsageSettings from './FirebaseUsageSettings';
+import AISettings from './AISettings';
 import DangerZone from './DangerZone';
 
 const TABS = [
   { id: 'profile', label: 'Profile', icon: User, component: ProfileSettings },
+  { id: 'ai', label: 'Groq AI & Models', icon: BrainCircuit, component: AISettings },
   { id: 'appearance', label: 'Appearance', icon: Palette, component: AppearanceSettings },
   { id: 'notifications', label: 'Notifications', icon: Bell, component: NotificationSettings },
   { id: 'firebase', label: 'Firebase & Quotas', icon: Flame, component: FirebaseUsageSettings },

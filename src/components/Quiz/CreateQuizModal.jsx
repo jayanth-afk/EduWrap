@@ -34,7 +34,7 @@ export default function CreateQuizModal({ isOpen, onClose }) {
         .filter(n => selectedPdfs.includes(n.id))
         .map(n => n.title);
 
-      const quizId = await generateQuiz(selectedPdfs, selectedTitles, questionCount);
+      const quizId = await generateQuiz(selectedPdfs, selectedTitles, questionCount, notes);
       if (!quizId) {
         setError('Could not generate questions. The selected PDF(s) may be image-based with no readable text.');
         return;
@@ -130,6 +130,16 @@ export default function CreateQuizModal({ isOpen, onClose }) {
                 <span className="text-lg font-bold w-8 text-right text-[color:oklch(0.58_0.22_var(--accent-hue))]">{questionCount}</span>
               </div>
 
+              <div className="flex items-center justify-between p-3.5 mt-4 bg-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.06)] rounded-2xl border border-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.15)]">
+                <div className="flex items-center gap-2 text-xs font-semibold text-[color:oklch(0.58_0.22_var(--accent-hue))]">
+                  <BrainCircuit className="w-4 h-4" />
+                  <span>Groq AI Neural Filtering Active</span>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.15)] text-[color:oklch(0.58_0.22_var(--accent-hue))] uppercase tracking-wider">
+                  Llama 3.3 70B
+                </span>
+              </div>
+
               {error && (
                 <div className="mt-4 p-3.5 bg-red-500/8 text-red-500 text-sm rounded-xl border border-red-500/20 font-medium">
                   {error}
@@ -152,8 +162,8 @@ export default function CreateQuizModal({ isOpen, onClose }) {
                 disabled={isGenerating || selectedPdfs.length === 0}
                 className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-[color:oklch(0.58_0.22_var(--accent-hue))] to-[color:oklch(0.50_0.22_calc(var(--accent-hue)-30))] text-white rounded-xl font-semibold shadow-lg shadow-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.3)] disabled:opacity-50 transition-all cursor-pointer"
               >
-                <BrainCircuit className={`w-4 h-4 ${isGenerating ? 'animate-pulse' : ''}`} />
-                {isGenerating ? 'Generating...' : 'Create Quiz'}
+                <BrainCircuit className={`w-4 h-4 ${isGenerating ? 'animate-spin' : ''}`} />
+                {isGenerating ? 'Groq AI Generating...' : 'Generate with Groq AI'}
               </motion.button>
             </div>
           </motion.div>

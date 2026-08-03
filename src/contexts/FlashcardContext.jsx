@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useUser } from './UserContext';
-import { getPDFText } from '../services/pdfService';
-import { generateFlashcards } from '../services/questionGenerator';
+import { getPDFText, processPDFFromUrl } from '../services/pdfService';
+import { generateSmartFlashcards } from '../services/groqService';
 import {
   flashcardDecksRef,
   flashcardDeckDoc,
@@ -74,13 +74,23 @@ export function FlashcardProvider({ children }) {
   };
 
   // ─── GENERATE DECK FROM PDFs ───
-  const generateDeck = async (selectedPdfIds, selectedPdfTitles, count) => {
+  const generateDeck = async (selectedPdfIds, selectedPdfTitles, count, allNotes = []) => {
     if (!uid) return null;
 
     let combinedText = '';
     for (const id of selectedPdfIds) {
       try {
-        const text = await getPDFText(id);
+        let text = await getPDFText(id);
+
+        // If text is not cached yet (PDF was never viewed), force-extract it now
+        if (!text) {
+          const note = allNotes.find(n => n.id === id);
+          if (note?.url) {
+            console.info(`[EduWrap] Force-extracting PDF text for: ${note.title || id}`);
+            text = await processPDFFromUrl(id, note.url);
+          }
+        }
+
         if (text) combinedText += text + '\n\n';
       } catch (err) {
         console.error('Failed to read text for pdf:', id, err);
@@ -89,7 +99,7 @@ export function FlashcardProvider({ children }) {
 
     let cards = [];
     if (combinedText.trim().length > 50) {
-      cards = generateFlashcards(combinedText, count);
+      cards = await generateSmartFlashcards(combinedText, count);
     }
 
     if (cards.length === 0) {

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useUser } from './UserContext';
-import { getPDFText } from '../services/pdfService';
-import { generateQuizQuestions } from '../services/questionGenerator';
+import { getPDFText, processPDFFromUrl } from '../services/pdfService';
+import { generateSmartQuiz } from '../services/groqService';
 import {
   quizzesRef,
   quizDoc,
@@ -52,13 +52,23 @@ export function QuizProvider({ children }) {
   }, [uid]);
 
   // ─── GENERATE QUIZ FROM PDFs ───
-  const generateQuiz = async (selectedPdfIds, selectedPdfTitles, count) => {
+  const generateQuiz = async (selectedPdfIds, selectedPdfTitles, count, allNotes = []) => {
     if (!uid) return null;
 
     let combinedText = '';
     for (const id of selectedPdfIds) {
       try {
-        const text = await getPDFText(id);
+        let text = await getPDFText(id);
+
+        // If text is not cached yet (PDF was never viewed), force-extract it now
+        if (!text) {
+          const note = allNotes.find(n => n.id === id);
+          if (note?.url) {
+            console.info(`[EduWrap] Force-extracting PDF text for quiz: ${note.title || id}`);
+            text = await processPDFFromUrl(id, note.url);
+          }
+        }
+
         if (text) combinedText += text + '\n\n';
       } catch (err) {
         console.error('Failed to read text for pdf:', id, err);
@@ -67,7 +77,7 @@ export function QuizProvider({ children }) {
 
     let questions = [];
     if (combinedText.trim().length > 50) {
-      questions = generateQuizQuestions(combinedText, count);
+      questions = await generateSmartQuiz(combinedText, count);
     }
 
     if (questions.length === 0) return null;
