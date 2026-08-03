@@ -1,4 +1,4 @@
-import { FileText, Import } from 'lucide-react';
+import { FileText, Import, Upload, Plus } from 'lucide-react';
 import { useNotes } from '../../contexts/NotesContext';
 import { useRef } from 'react';
 
@@ -19,6 +19,9 @@ export default function EmptyNotesState() {
         console.error("Failed to import note", err);
       }
     }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   return (
@@ -28,27 +31,28 @@ export default function EmptyNotesState() {
       </div>
       <h2 className="text-2xl font-semibold mb-2 font-sora">Your Notes Workspace</h2>
       <p className="text-(--text-secondary) max-w-md mb-8">
-        Select a note from the sidebar to start writing, or create a new one to jot down your thoughts.
+        Select a note or PDF from the sidebar to view, create a new markdown note, or upload your PDF lecture slides.
       </p>
-      <div className="flex gap-4">
+      <div className="flex flex-wrap items-center justify-center gap-4">
         <button
-          onClick={addNote}
-          className="bg-(--accent) text-white px-6 py-2.5 rounded-xl font-medium shadow-md shadow-(--accent)/20 hover:-translate-y-0.5 hover:shadow-lg transition-all"
+          onClick={() => addNote()}
+          className="flex items-center gap-2 bg-(--accent) text-white px-6 py-2.5 rounded-xl font-medium shadow-md shadow-(--accent)/20 hover:-translate-y-0.5 hover:shadow-lg transition-all cursor-pointer"
         >
+          <Plus className="w-4 h-4" />
           Create New Note
         </button>
         <button
           onClick={handleImportClick}
           className="flex items-center gap-2 bg-(--bg-elevated) text-(--text-primary) px-6 py-2.5 rounded-xl font-medium border border-(--border-subtle) hover:bg-(--bg-hover) transition-all cursor-pointer"
         >
-          <Import className="w-4 h-4" />
-          Import File
+          <Upload className="w-4 h-4 text-(--accent)" />
+          Upload PDF / Document
         </button>
         <input
           type="file"
           ref={fileInputRef}
           onChange={handleFileChange}
-          accept=".txt,.md"
+          accept=".pdf,.txt,.md,application/pdf"
           className="hidden"
         />
       </div>

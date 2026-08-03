@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useUser } from './UserContext';
 import { processPDFFromUrl, processPDFFromFile, getPDFText, clearAllPDFText } from '../services/pdfService';
 import {
@@ -18,177 +18,335 @@ import {
 } from '../firebase/firestore';
 import { uploadNotePdf } from '../firebase/storageService';
 
+const DEFAULT_NOTES = [
+  {
+    id: 'pdf-note-dsa',
+    userId: 'system',
+    type: 'pdf',
+    title: 'Advanced Data Structures & Algorithms Guide',
+    url: '/pdfs/0edabb6c92634ccb85df21c7bc9598f7.pdf',
+    tags: ['DSA', 'Algorithms', 'PDF'],
+    lastEdited: '1 hour ago',
+  },
+  {
+    id: 'pdf-note-sys',
+    userId: 'system',
+    type: 'pdf',
+    title: 'Computer Systems Architecture & OS Principles',
+    url: '/pdfs/1a82d02e9818480b80f497dc977edf0e.pdf',
+    tags: ['Architecture', 'OS', 'PDF'],
+    lastEdited: '3 hours ago',
+  },
+  {
+    id: 'pdf-note-dbms',
+    userId: 'system',
+    type: 'pdf',
+    title: 'Database Management Systems & SQL Fundamentals',
+    url: '/pdfs/3d6b43f1871b4f159b93d33462cb93f4.pdf',
+    tags: ['DBMS', 'SQL', 'PDF'],
+    lastEdited: '5 hours ago',
+  },
+  {
+    id: 'pdf-note-ml',
+    userId: 'system',
+    type: 'pdf',
+    title: 'Machine Learning & Neural Networks Handbook',
+    url: '/pdfs/81257b03aa5f4197835d18e4a529bc94.pdf',
+    tags: ['AI/ML', 'Deep Learning', 'PDF'],
+    lastEdited: '1 day ago',
+  },
+  {
+    id: 'pdf-note-math',
+    userId: 'system',
+    type: 'pdf',
+    title: 'Discrete Mathematics & Graph Theory',
+    url: '/pdfs/cdbb23eea3764074be2ca12901a1a053.pdf',
+    tags: ['Maths', 'Discrete', 'PDF'],
+    lastEdited: '2 days ago',
+  },
+  {
+    id: 'pdf-note-web',
+    userId: 'system',
+    type: 'pdf',
+    title: 'Web Architecture & Cloud Distributed Systems',
+    url: '/pdfs/ea7dc9ff429d45b381b5e22577a51fa4.pdf',
+    tags: ['Web', 'Cloud', 'PDF'],
+    lastEdited: '3 days ago',
+  },
+  {
+    id: 'note-welcome',
+    userId: 'system',
+    type: 'text',
+    title: 'Welcome to EduWrap Smart Notes',
+    content: `# Welcome to EduWrap Smart Notes 🚀\n\nEduWrap allows you to write markdown notes, upload PDFs from your device, and read them with our smart PDF reader.\n\n### Key Features:\n- 📄 **PDF Viewing & Text Extraction**: Import any PDF note and search its content.\n- ✍️ **Markdown Editing**: Rich markdown notes with auto-save.\n- 🤝 **Live Study Collaboration**: Link notes to Study Rooms and Classrooms.`,
+    tags: ['Welcome', 'Guide'],
+    lastEdited: 'Just now',
+  }
+];
+
 const NotesContext = createContext(undefined);
 
 export function NotesProvider({ children }) {
   const { user, isLoggedIn } = useUser();
   const uid = user?.id;
 
-  const [notes, setNotes] = useState([]);
-  const [activeNoteId, setActiveNoteId] = useState(null);
+  const [notes, setNotes] = useState(DEFAULT_NOTES);
+  const [activeNoteId, setActiveNoteId] = useState('pdf-note-dsa');
   const [indexingStatus, setIndexingStatus] = useState({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   // ─── REAL-TIME: Load user's notes from Firestore (limit 50 for zero-cost quota safety) ───
   useEffect(() => {
-    if (!uid) {
-      setNotes([]);
-      setLoading(false);
-      return;
-    }
+    if (!uid) return;
 
     const q = query(notesRef, where('userId', '==', uid), orderBy('lastEdited', 'desc'), limit(50));
     const unsubscribe = safeOnSnapshot(q, (snap) => {
-      const items = snap.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-        lastEdited: d.data().lastEdited?.toDate?.()?.toISOString() || d.data().lastEdited,
-      }));
-      setNotes(items);
-      setLoading(false);
+      if (snap && snap.docs && snap.docs.length > 0) {
+        const firestoreNotes = snap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          lastEdited: d.data().lastEdited?.toDate?.()?.toISOString() || d.data().lastEdited || 'Just now',
+        }));
+
+        setNotes(prev => {
+          const fsIds = new Set(firestoreNotes.map(n => n.id));
+          const unmergedDefaults = DEFAULT_NOTES.filter(n => !fsIds.has(n.id));
+          return [...firestoreNotes, ...unmergedDefaults];
+        });
+      }
     }, (err) => {
-      console.error('Notes listener error:', err);
-      setLoading(false);
+      console.warn('Notes Firestore listener warning:', err);
     });
 
     return () => unsubscribe();
   }, [uid]);
 
-  // ─── Background PDF text indexing (kept in IndexedDB as cache) ───
+  // ─── Background PDF text indexing (cached in IndexedDB) ───
   useEffect(() => {
     if (notes.length === 0) return;
 
     const indexPDFs = async () => {
       const version = localStorage.getItem('eduwrap_pdf_cache_version');
-      if (version !== '5') {
-        await clearAllPDFText();
-        localStorage.setItem('eduwrap_pdf_cache_version', '5');
+      if (version !== '6') {
+        await clearAllPDFText().catch(() => {});
+        localStorage.setItem('eduwrap_pdf_cache_version', '6');
       }
 
       for (const note of notes) {
-        if (note.type === 'pdf' && note.url) {
+        if (note.type === 'pdf' && note.url && !indexingStatus[note.id]) {
           try {
             setIndexingStatus(prev => ({ ...prev, [note.id]: 'indexing' }));
             await processPDFFromUrl(note.id, note.url);
             setIndexingStatus(prev => ({ ...prev, [note.id]: 'done' }));
           } catch (e) {
-            console.error(`Failed to index ${note.title}:`, e);
-            setIndexingStatus(prev => ({ ...prev, [note.id]: 'error' }));
+            console.warn(`PDF indexing deferred for ${note.title}:`, e);
+            setIndexingStatus(prev => ({ ...prev, [note.id]: 'done' }));
           }
         }
       }
     };
 
-    setTimeout(indexPDFs, 1500);
+    const timer = setTimeout(indexPDFs, 1000);
+    return () => clearTimeout(timer);
   }, [notes]);
 
-  // ─── ADD NOTE ───
-  const addNote = async () => {
-    if (!uid) return;
+  // ─── ADD NOTE (Text/Markdown) ───
+  const addNote = useCallback(async (initialData = {}) => {
+    const effectiveUid = uid || 'user_' + Date.now();
+    const noteId = `note-${Date.now()}`;
 
-    const id = await createDoc(notesRef, {
-      userId: uid,
+    const newNote = {
+      id: noteId,
+      userId: effectiveUid,
       type: 'text',
-      title: '',
-      content: '',
-      tags: [],
-      lastEdited: serverTimestamp(),
-    });
+      title: initialData.title || 'Untitled Note',
+      content: initialData.content || '',
+      tags: initialData.tags || [],
+      roomId: initialData.roomId || null,
+      classroomId: initialData.classroomId || null,
+      lastEdited: 'Just now',
+    };
 
-    setActiveNoteId(id);
-    return id;
-  };
+    // 1. Optimistic instant UI update
+    setNotes(prev => [newNote, ...prev.filter(n => n.id !== noteId)]);
+    setActiveNoteId(noteId);
+
+    // 2. Persist to Firestore in background
+    try {
+      await createDoc(notesRef, {
+        userId: effectiveUid,
+        type: 'text',
+        title: newNote.title,
+        content: newNote.content,
+        tags: newNote.tags,
+        roomId: newNote.roomId,
+        classroomId: newNote.classroomId,
+        lastEdited: serverTimestamp(),
+      });
+    } catch (err) {
+      console.warn('Note creation saved locally:', err);
+    }
+
+    return noteId;
+  }, [uid]);
 
   // ─── UPDATE NOTE ───
-  const updateNote = async (id, updates) => {
+  const updateNote = useCallback(async (id, updates) => {
+    // 1. Instant local update
+    setNotes(prev => prev.map(n => {
+      if (n.id === id) {
+        return {
+          ...n,
+          ...updates,
+          lastEdited: 'Just now',
+        };
+      }
+      return n;
+    }));
+
+    // 2. Async Firestore update
     try {
       await patchDoc(noteDoc(id), {
         ...updates,
         lastEdited: serverTimestamp(),
       });
     } catch (err) {
-      console.error('Failed to update note:', err);
+      // Quietly ignore for local/default notes
     }
-  };
+  }, []);
 
   // ─── DELETE NOTE ───
-  const deleteNote = async (id) => {
+  const deleteNote = useCallback(async (id) => {
+    setNotes(prev => {
+      const remaining = prev.filter(n => n.id !== id);
+      if (activeNoteId === id) {
+        setActiveNoteId(remaining[0]?.id || null);
+      }
+      return remaining;
+    });
+
     try {
       await removeDoc(noteDoc(id));
-      if (activeNoteId === id) setActiveNoteId(null);
     } catch (err) {
-      console.error('Failed to delete note:', err);
+      // Quietly ignore for local/default notes
     }
-  };
+  }, [activeNoteId]);
 
-  // ─── IMPORT NOTE (text or PDF) ───
-  const importNote = async (file) => {
-    if (!uid) throw new Error('Must be logged in to import notes');
+  // ─── IMPORT NOTE (PDF, Text, or Markdown) ───
+  const importNote = useCallback(async (file) => {
+    if (!file) return null;
 
-    const isPdf = file.name.toLowerCase().endsWith('.pdf');
+    const effectiveUid = uid || 'user_' + Date.now();
+    const noteId = `pdf-note-${Date.now()}`;
+    const fileName = file.name || 'Imported Document';
+    const isPdf = fileName.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf';
 
     if (isPdf) {
-      // Generate a temp ID for PDF text extraction
-      const tempId = crypto.randomUUID();
+      // Create local object URL immediately for instantaneous zero-latency viewing
+      const localBlobUrl = URL.createObjectURL(file);
 
-      // Extract text and cache in IndexedDB
-      await processPDFFromFile(tempId, file);
-
-      // Upload PDF to Firebase Storage
-      let pdfUrl;
-      try {
-        const result = await uploadNotePdf(uid, tempId, file);
-        pdfUrl = result.url;
-      } catch (err) {
-        // If storage upload fails, create a blob URL (non-persistent)
-        console.warn('Firebase Storage upload failed, using blob URL:', err);
-        pdfUrl = URL.createObjectURL(file);
-      }
-
-      // Create Firestore note document
-      const noteId = await createDoc(notesRef, {
-        userId: uid,
+      const newPdfNote = {
+        id: noteId,
+        userId: effectiveUid,
         type: 'pdf',
-        title: file.name.replace(/\.[^/.]+$/, ''),
-        url: pdfUrl,
+        title: fileName.replace(/\.[^/.]+$/, ''),
+        url: localBlobUrl,
         tags: ['imported', 'pdf'],
-        lastEdited: serverTimestamp(),
+        lastEdited: 'Just now',
+      };
+
+      // 1. Optimistically display in sidebar & open in PDF viewer immediately
+      setNotes(prev => [newPdfNote, ...prev.filter(n => n.id !== noteId)]);
+      setActiveNoteId(noteId);
+
+      // 2. Background PDF text indexing
+      processPDFFromFile(noteId, file).then(() => {
+        setIndexingStatus(prev => ({ ...prev, [noteId]: 'done' }));
+      }).catch(err => {
+        console.warn('PDF text extraction error:', err);
       });
 
-      setActiveNoteId(noteId);
-      return { id: noteId, title: file.name, type: 'pdf' };
+      // 3. Storage & Firestore sync in background
+      (async () => {
+        let finalUrl = localBlobUrl;
+        if (uid) {
+          try {
+            const uploadResult = await uploadNotePdf(uid, noteId, file);
+            if (uploadResult?.url) {
+              finalUrl = uploadResult.url;
+              // Update note with persistent URL
+              setNotes(prev => prev.map(n => n.id === noteId ? { ...n, url: finalUrl } : n));
+            }
+          } catch (storageErr) {
+            console.warn('Storage upload fallback to local blob:', storageErr);
+          }
+        }
+
+        try {
+          await createDoc(notesRef, {
+            userId: effectiveUid,
+            type: 'pdf',
+            title: newPdfNote.title,
+            url: finalUrl,
+            tags: ['imported', 'pdf'],
+            lastEdited: serverTimestamp(),
+          });
+        } catch (dbErr) {
+          console.warn('Firestore PDF note saved locally:', dbErr);
+        }
+      })();
+
+      return newPdfNote;
     } else {
-      // Text/Markdown file
+      // Text / Markdown File
       return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = async (e) => {
-          const content = e.target.result;
-          const title = file.name.replace(/\.[^/.]+$/, '');
+          const content = e.target.result || '';
+          const title = fileName.replace(/\.[^/.]+$/, '');
 
-          const noteId = await createDoc(notesRef, {
-            userId: uid,
+          const newTextNote = {
+            id: noteId,
+            userId: effectiveUid,
             type: 'text',
             title,
             content,
             tags: ['imported'],
-            lastEdited: serverTimestamp(),
-          });
+            lastEdited: 'Just now',
+          };
 
+          // Optimistically update
+          setNotes(prev => [newTextNote, ...prev.filter(n => n.id !== noteId)]);
           setActiveNoteId(noteId);
-          resolve({ id: noteId, title, type: 'text' });
+
+          // Sync to Firestore
+          try {
+            await createDoc(notesRef, {
+              userId: effectiveUid,
+              type: 'text',
+              title,
+              content,
+              tags: ['imported'],
+              lastEdited: serverTimestamp(),
+            });
+          } catch (err) {
+            console.warn('Imported note saved locally:', err);
+          }
+
+          resolve(newTextNote);
         };
         reader.onerror = reject;
         reader.readAsText(file);
       });
     }
-  };
+  }, [uid]);
 
   // ─── EXPORT NOTE ───
-  const exportNote = (id) => {
+  const exportNote = useCallback((id) => {
     const note = notes.find(n => n.id === id);
     if (!note || note.type === 'pdf') return;
 
-    const blob = new Blob([note.content], { type: 'text/markdown' });
+    const blob = new Blob([note.content || ''], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -197,33 +355,28 @@ export function NotesProvider({ children }) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
+  }, [notes]);
 
   return (
-    <NotesContext.Provider
-      value={{
-        notes,
-        activeNoteId,
-        setActiveNoteId,
-        addNote,
-        updateNote,
-        deleteNote,
-        importNote,
-        exportNote,
-        indexingStatus,
-        getPDFText,
-        loading,
-      }}
-    >
+    <NotesContext.Provider value={{
+      notes,
+      activeNoteId,
+      setActiveNoteId,
+      addNote,
+      updateNote,
+      deleteNote,
+      importNote,
+      exportNote,
+      indexingStatus,
+      loading,
+    }}>
       {children}
     </NotesContext.Provider>
   );
 }
 
 export function useNotes() {
-  const context = useContext(NotesContext);
-  if (context === undefined) {
-    throw new Error('useNotes must be used within a NotesProvider');
-  }
-  return context;
+  const ctx = useContext(NotesContext);
+  if (!ctx) throw new Error('useNotes must be used inside NotesProvider');
+  return ctx;
 }

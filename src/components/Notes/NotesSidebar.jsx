@@ -62,7 +62,7 @@ export default function NotesSidebar() {
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
-              accept=".txt,.md,.pdf"
+              accept=".pdf,.txt,.md,application/pdf"
               className="hidden"
             />
           </div>
@@ -89,6 +89,9 @@ export default function NotesSidebar() {
           filteredNotes.map((note) => {
             const isPdf = note.type === 'pdf';
             const status = indexingStatus[note.id];
+            const dateDisplay = note.lastEdited && !isNaN(Date.parse(note.lastEdited))
+              ? new Date(note.lastEdited).toLocaleDateString()
+              : (note.lastEdited || 'Recently');
             
             return (
               <button
@@ -128,7 +131,7 @@ export default function NotesSidebar() {
                   </div>
                 )}
                 <div className={`text-[10px] pl-6 mt-1 font-mono ${activeNoteId === note.id ? 'text-(--accent)/50' : 'text-(--text-tertiary)/50'}`}>
-                  {new Date(note.lastEdited).toLocaleDateString()}
+                  {dateDisplay}
                 </div>
               </button>
             );
