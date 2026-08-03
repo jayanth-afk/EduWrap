@@ -12,7 +12,7 @@ import {
   createDocWithId,
   patchDoc,
   removeDoc,
-  onSnapshot,
+  safeOnSnapshot,
   query,
   where,
   orderBy,
@@ -41,12 +41,12 @@ export function RoomProvider({ children }) {
   const [activeRoomClassrooms, setActiveRoomClassrooms] = useState([]);
   const [lastVisited, setLastVisited] = useState({});
 
-  // ─── LOAD ALL ROOMS (real-time) ───
+  // ─── LOAD ALL ROOMS (real-time, bounded to 25 for zero-cost quota safety) ───
   useEffect(() => {
     if (!isLoggedIn) return;
 
-    const q = query(roomsRef, orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const q = query(roomsRef, orderBy('createdAt', 'desc'), limit(25));
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       const roomList = snap.docs.map(d => ({
         id: d.id,
         ...d.data(),
@@ -66,7 +66,7 @@ export function RoomProvider({ children }) {
     }
 
     const q = query(roomClassrooms(activeRoomId), orderBy('createdAt', 'asc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       setActiveRoomClassrooms(snap.docs.map(d => ({
         id: d.id,
         ...d.data(),
@@ -83,7 +83,7 @@ export function RoomProvider({ children }) {
       return;
     }
 
-    const unsubscribe = onSnapshot(roomMembers(activeRoomId), (snap) => {
+    const unsubscribe = safeOnSnapshot(roomMembers(activeRoomId), (snap) => {
       setActiveRoomMembers(snap.docs.map(d => ({
         id: d.id,
         ...d.data(),

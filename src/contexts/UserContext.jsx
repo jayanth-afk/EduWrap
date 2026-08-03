@@ -567,6 +567,28 @@ export function UserProvider({ children }) {
     }
   }, [session.user?.id]);
 
+  // ─── GUEST / DEMO SIGN IN ───
+  const loginAsGuest = useCallback(() => {
+    const guestUser = {
+      id: 'demo_scholar_user',
+      name: 'EduWrap Scholar',
+      email: 'scholar@eduwrap.app',
+      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
+      xp: 2450,
+      level: 4,
+      streak: 7,
+      subjects: ['Computer Science', 'Mathematics', 'Physics'],
+      studyPreferences: { dailyGoalMinutes: 60, reminderEnabled: true },
+      onboardingCompleted: true,
+    };
+    setSession({
+      isLoggedIn: true,
+      user: guestUser,
+      loading: false,
+      error: null,
+    });
+  }, []);
+
   // ─── LOGOUT ───
   const logout = useCallback(async () => {
     try {
@@ -576,6 +598,12 @@ export function UserProvider({ children }) {
     } catch (err) {
       console.error('Logout failed:', err);
     }
+    setSession({
+      isLoggedIn: false,
+      user: null,
+      loading: false,
+      error: null,
+    });
   }, []);
 
   // ─── CLEAR ERROR ───
@@ -592,6 +620,7 @@ export function UserProvider({ children }) {
       loginWithGithub,
       loginWithTwitter,
       loginWithFacebook,
+      loginAsGuest,
       updateUser,
       logout,
       clearError,

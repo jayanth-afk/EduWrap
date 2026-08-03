@@ -12,7 +12,7 @@ import {
   createDocWithId,
   patchDoc,
   removeDoc,
-  onSnapshot,
+  safeOnSnapshot,
   query,
   where,
   orderBy,
@@ -38,7 +38,7 @@ export function DoubtProvider({ children }) {
   const [topSolvers, setTopSolvers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ─── REAL-TIME: Load all doubts ───
+  // ─── REAL-TIME: Load all doubts (bounded to 30 for zero-cost quota safety) ───
   useEffect(() => {
     if (!isLoggedIn) {
       setDoubts([]);
@@ -46,8 +46,8 @@ export function DoubtProvider({ children }) {
       return;
     }
 
-    const q = query(doubtsRef, orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const q = query(doubtsRef, orderBy('createdAt', 'desc'), limit(30));
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       setDoubts(snap.docs.map(d => ({
         id: d.id,
         ...d.data(),
@@ -66,7 +66,7 @@ export function DoubtProvider({ children }) {
   useEffect(() => {
     if (!uid) return;
 
-    const unsubscribe = onSnapshot(userVotes(uid), (snap) => {
+    const unsubscribe = safeOnSnapshot(userVotes(uid), (snap) => {
       const votes = {};
       snap.docs.forEach(d => {
         votes[d.id] = d.data().direction;
@@ -97,7 +97,7 @@ export function DoubtProvider({ children }) {
     if (!isLoggedIn) return;
 
     const q = query(usersRef, orderBy('xp', 'desc'), limit(5));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       setTopSolvers(snap.docs.map((d, i) => ({
         id: d.id,
         name: d.data().name || 'Anonymous',

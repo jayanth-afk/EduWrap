@@ -28,6 +28,8 @@ export const roomFilePath = (roomId, fileName) => ref(storage, `rooms/${roomId}/
 /** Get a storage reference for a note's attached PDF */
 export const notePdfPath = (uid, noteId, fileName) => ref(storage, `users/${uid}/notes/${noteId}/${fileName}`);
 
+import { validateFileSize, recordStorageUpload } from '../services/quotaService';
+
 // ─── UPLOAD ───
 
 /**
@@ -41,6 +43,13 @@ export const notePdfPath = (uid, noteId, fileName) => ref(storage, `users/${uid}
  */
 export function uploadFile(storageRef, file, metadata = {}, onProgress = null) {
   return new Promise((resolve, reject) => {
+    // 🛡️ Free-Tier Safety Guard: Verify file size does not exceed safety cap
+    const validation = validateFileSize(file);
+    if (!validation.valid) {
+      console.error('Storage Guard Rejection:', validation.error);
+      return reject(new Error(validation.error));
+    }
+
     const uploadTask = uploadBytesResumable(storageRef, file, metadata);
 
     uploadTask.on(
@@ -58,6 +67,8 @@ export function uploadFile(storageRef, file, metadata = {}, onProgress = null) {
       async () => {
         try {
           const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+          // Record successful upload operation and size in quota tracker
+          recordStorageUpload(file.size || 0);
           resolve(downloadURL);
         } catch (err) {
           reject(err);

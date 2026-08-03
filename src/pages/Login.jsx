@@ -53,7 +53,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, loginWithGoogle, loginWithGithub, loginWithTwitter, loginWithFacebook, isLoggedIn, error: authError, clearError } = useUser();
+  const { login, loginWithGoogle, loginWithGithub, loginWithTwitter, loginWithFacebook, loginAsGuest, isLoggedIn, error: authError, clearError } = useUser();
 
   // Automatically navigate as soon as user is authenticated
   useEffect(() => {
@@ -250,7 +250,17 @@ export default function Login() {
         </button>
       </div>
 
-      <p className="mt-8 text-center text-sm text-(--text-secondary)">
+      <div className="mt-4 pt-4 border-t border-(--border-default)/50 text-center">
+        <button
+          type="button"
+          onClick={() => { loginAsGuest(); navigate('/dashboard'); }}
+          className="text-xs font-semibold text-[color:oklch(0.58_0.22_var(--accent-hue))] hover:underline inline-flex items-center gap-1.5 py-1 px-3 rounded-lg bg-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.1)] border border-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.2)] transition-all active:scale-95 cursor-pointer"
+        >
+          ✨ Explore with Guest / Demo Mode
+        </button>
+      </div>
+
+      <p className="mt-6 text-center text-sm text-(--text-secondary)">
         Don't have an account?{' '}
         <Link to="/signup" className="text-(--text-primary) font-semibold hover:underline">Sign up</Link>
       </p>

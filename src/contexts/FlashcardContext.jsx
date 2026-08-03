@@ -8,10 +8,11 @@ import {
   createDoc,
   patchDoc,
   removeDoc,
-  onSnapshot,
+  safeOnSnapshot,
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
 } from '../firebase/firestore';
 
@@ -25,7 +26,7 @@ export function FlashcardProvider({ children }) {
   const [activeDeckId, setActiveDeckId] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ─── REAL-TIME: Load user's flashcard decks ───
+  // ─── REAL-TIME: Load user's flashcard decks (limit 30 for zero-cost quota safety) ───
   useEffect(() => {
     if (!uid) {
       setDecks([]);
@@ -33,8 +34,8 @@ export function FlashcardProvider({ children }) {
       return;
     }
 
-    const q = query(flashcardDecksRef, where('userId', '==', uid), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const q = query(flashcardDecksRef, where('userId', '==', uid), orderBy('createdAt', 'desc'), limit(30));
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       setDecks(snap.docs.map(d => ({
         id: d.id,
         ...d.data(),

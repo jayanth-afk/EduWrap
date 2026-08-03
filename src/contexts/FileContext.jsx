@@ -7,10 +7,11 @@ import {
   createDoc,
   patchDoc,
   removeDoc,
-  onSnapshot,
+  safeOnSnapshot,
   query,
   where,
   orderBy,
+  limit,
   doc,
   serverTimestamp,
   increment,
@@ -29,7 +30,7 @@ export function FileProvider({ children }) {
   const [activity, setActivity] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // ─── REAL-TIME: Load user's files ───
+  // ─── REAL-TIME: Load user's files (limit 50 for zero-cost quota safety) ───
   useEffect(() => {
     if (!uid) {
       setFiles([]);
@@ -38,8 +39,8 @@ export function FileProvider({ children }) {
     }
 
     // Load files the user owns or that are shared globally
-    const q = query(filesRef, where('userId', '==', uid), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const q = query(filesRef, where('userId', '==', uid), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       setFiles(snap.docs.map(d => ({
         id: d.id,
         ...d.data(),
@@ -59,7 +60,7 @@ export function FileProvider({ children }) {
       return;
     }
 
-    const unsubscribe = onSnapshot(userFolders(uid), (snap) => {
+    const unsubscribe = safeOnSnapshot(userFolders(uid), (snap) => {
       setFolders(snap.docs.map(d => ({
         id: d.id,
         ...d.data(),

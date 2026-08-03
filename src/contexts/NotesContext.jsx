@@ -8,10 +8,11 @@ import {
   createDoc,
   patchDoc,
   removeDoc,
-  onSnapshot,
+  safeOnSnapshot,
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
   timeAgo,
 } from '../firebase/firestore';
@@ -28,7 +29,7 @@ export function NotesProvider({ children }) {
   const [indexingStatus, setIndexingStatus] = useState({});
   const [loading, setLoading] = useState(true);
 
-  // ─── REAL-TIME: Load user's notes from Firestore ───
+  // ─── REAL-TIME: Load user's notes from Firestore (limit 50 for zero-cost quota safety) ───
   useEffect(() => {
     if (!uid) {
       setNotes([]);
@@ -36,8 +37,8 @@ export function NotesProvider({ children }) {
       return;
     }
 
-    const q = query(notesRef, where('userId', '==', uid), orderBy('lastEdited', 'desc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const q = query(notesRef, where('userId', '==', uid), orderBy('lastEdited', 'desc'), limit(50));
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       const items = snap.docs.map(d => ({
         id: d.id,
         ...d.data(),

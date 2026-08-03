@@ -11,7 +11,7 @@ import {
   createDoc,
   patchDoc,
   removeDoc,
-  onSnapshot,
+  safeOnSnapshot,
   query,
   where,
   orderBy,
@@ -35,12 +35,12 @@ export function DashboardProvider({ children }) {
   const [recentActivity, setRecentActivity] = useState([]);
   const [dailyGoal, setDailyGoal] = useState({ target: 4, current: 0, streak: 0, xpToday: 0 });
 
-  // ─── REAL-TIME: USER TASKS ───
+  // ─── REAL-TIME: USER TASKS (limit 50 for zero-cost quota safety) ───
   useEffect(() => {
     if (!uid) return;
 
-    const q = query(userTasks(uid), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const q = query(userTasks(uid), orderBy('createdAt', 'desc'), limit(50));
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       const items = snap.docs.map(d => ({
         id: d.id,
         ...d.data(),
@@ -59,7 +59,7 @@ export function DashboardProvider({ children }) {
     if (!uid) return;
 
     const q = query(userNotifications(uid), orderBy('createdAt', 'desc'), limit(10));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       setNotifications(snap.docs.map(d => ({
         id: d.id,
         ...d.data(),
@@ -75,7 +75,7 @@ export function DashboardProvider({ children }) {
     if (!isLoggedIn) return;
 
     const q = query(usersRef, orderBy('xp', 'desc'), limit(10));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       setLeaderboard(snap.docs.map((d, i) => ({
         id: d.id,
         name: d.data().name || 'Anonymous',
@@ -93,7 +93,7 @@ export function DashboardProvider({ children }) {
     if (!uid) return;
 
     const q = query(roomsRef, where('memberIds', 'array-contains', uid), limit(5));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       setActiveRooms(snap.docs.map(d => ({
         id: d.id,
         name: d.data().name,

@@ -8,10 +8,11 @@ import {
   createDoc,
   patchDoc,
   removeDoc,
-  onSnapshot,
+  safeOnSnapshot,
   query,
   where,
   orderBy,
+  limit,
   serverTimestamp,
 } from '../firebase/firestore';
 
@@ -25,7 +26,7 @@ export function QuizProvider({ children }) {
   const [activeQuizId, setActiveQuizId] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // ─── REAL-TIME: Load user's quizzes ───
+  // ─── REAL-TIME: Load user's quizzes (limit 30 for zero-cost quota safety) ───
   useEffect(() => {
     if (!uid) {
       setQuizzes([]);
@@ -33,8 +34,8 @@ export function QuizProvider({ children }) {
       return;
     }
 
-    const q = query(quizzesRef, where('userId', '==', uid), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snap) => {
+    const q = query(quizzesRef, where('userId', '==', uid), orderBy('createdAt', 'desc'), limit(30));
+    const unsubscribe = safeOnSnapshot(q, (snap) => {
       setQuizzes(snap.docs.map(d => ({
         id: d.id,
         ...d.data(),

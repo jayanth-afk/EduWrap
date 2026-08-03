@@ -95,11 +95,19 @@ export function toISO(timestamp) {
   return new Date(timestamp).toISOString();
 }
 
-// ─── CRUD WRAPPERS ───
+import { 
+  recordReads, 
+  recordWrites, 
+  recordDeletes 
+} from '../services/quotaService';
+
+// ─── CRUD WRAPPERS (With Quota Telemetry & Safety Guards) ───
 
 /** Fetch a single document and return its data with id */
 export async function fetchDoc(docRef) {
   const snap = await getDoc(docRef);
+  // Record 1 read in quota tracker if document was fetched/checked
+  recordReads(1);
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() };
 }
@@ -107,6 +115,8 @@ export async function fetchDoc(docRef) {
 /** Fetch all documents in a query and return as array */
 export async function fetchQuery(q) {
   const snap = await getDocs(q);
+  // Record reads matching number of returned documents (minimum 1 read even if empty)
+  recordReads(Math.max(1, snap.docs.length));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
@@ -116,6 +126,7 @@ export async function createDoc(collectionRef, data) {
     ...data,
     createdAt: serverTimestamp(),
   });
+  recordWrites(1);
   return docRef.id;
 }
 
@@ -125,6 +136,7 @@ export async function createDocWithId(docRef, data) {
     ...data,
     createdAt: serverTimestamp(),
   });
+  recordWrites(1);
 }
 
 /** Update fields on an existing document */
@@ -133,22 +145,54 @@ export async function patchDoc(docRef, updates) {
     ...updates,
     updatedAt: serverTimestamp(),
   });
+  recordWrites(1);
 }
 
 /** Delete a document */
 export async function removeDoc(docRef) {
   await deleteDoc(docRef);
+  recordDeletes(1);
 }
 
 /** Batch write helper — execute multiple writes atomically */
 export async function batchWrite(operations) {
   const batch = writeBatch(db);
+  let writeCount = 0;
+  let deleteCount = 0;
+
   for (const op of operations) {
-    if (op.type === 'set') batch.set(op.ref, op.data);
-    if (op.type === 'update') batch.update(op.ref, op.data);
-    if (op.type === 'delete') batch.delete(op.ref);
+    if (op.type === 'set') { batch.set(op.ref, op.data); writeCount++; }
+    if (op.type === 'update') { batch.update(op.ref, op.data); writeCount++; }
+    if (op.type === 'delete') { batch.delete(op.ref); deleteCount++; }
   }
   await batch.commit();
+  if (writeCount > 0) recordWrites(writeCount);
+  if (deleteCount > 0) recordDeletes(deleteCount);
+}
+
+/**
+ * Safe onSnapshot wrapper that tracks document read changes
+ */
+export function safeOnSnapshot(targetQuery, onNext, onError) {
+  let isFirst = true;
+  return onSnapshot(
+    targetQuery,
+    (snapshot) => {
+      if (isFirst) {
+        // Record initial query document count
+        recordReads(Math.max(1, snapshot.docs?.length || 1));
+        isFirst = false;
+      } else if (snapshot.docChanges) {
+        // Record only changed documents for subsequent updates
+        const changes = snapshot.docChanges();
+        if (changes.length > 0) {
+          recordReads(changes.length);
+        }
+      }
+      if (onNext) onNext(snapshot);
+    },
+    onError
+  );
 }
 
 // Re-export commonly used Firestore functions for convenience
