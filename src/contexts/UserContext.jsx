@@ -24,6 +24,7 @@ import {
   createDocWithId,
   patchDoc,
 } from '../firebase/firestore';
+import { isSuperAdmin, fetchCoAdmins } from '../services/adminService';
 
 const UserContext = createContext(null);
 
@@ -47,6 +48,9 @@ export function UserProvider({ children }) {
     loading: true,  // true until auth state is resolved
     error: null,
   });
+
+  // Admin role state
+  const [coAdminEmails, setCoAdminEmails] = useState([]);
 
   // ─── FACEBOOK SDK LOGIN STATUS SYNC ───
   useEffect(() => {
@@ -611,6 +615,18 @@ export function UserProvider({ children }) {
     setSession(prev => ({ ...prev, error: null }));
   }, []);
 
+  // ─── ADMIN ROLE COMPUTATION ───
+  const userEmail = session.user?.email || '';
+  const isAdmin = isSuperAdmin(userEmail);
+  const isCoAdmin = !isAdmin && coAdminEmails.includes(userEmail.toLowerCase().trim());
+
+  // Fetch co-admin list when user logs in
+  useEffect(() => {
+    if (session.isLoggedIn && session.user?.email) {
+      fetchCoAdmins().then(list => setCoAdminEmails(list)).catch(() => {});
+    }
+  }, [session.isLoggedIn, session.user?.email]);
+
   return (
     <UserContext.Provider value={{
       ...session,
@@ -624,6 +640,8 @@ export function UserProvider({ children }) {
       updateUser,
       logout,
       clearError,
+      isAdmin,
+      isCoAdmin,
     }}>
       {children}
     </UserContext.Provider>

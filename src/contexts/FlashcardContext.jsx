@@ -82,18 +82,38 @@ export function FlashcardProvider({ children }) {
       try {
         let text = await getPDFText(id);
 
-        // If text is not cached yet (PDF was never viewed), force-extract it now
+        // If text is not cached yet, try finding the note in local state first
         if (!text) {
           const note = allNotes.find(n => n.id === id);
           if (note?.url) {
-            console.info(`[EduWrap] Force-extracting PDF text for: ${note.title || id}`);
+            console.info(`[EduWrap] Force-extracting PDF text for flashcards: ${note.title || id}`);
             text = await processPDFFromUrl(id, note.url);
           }
         }
 
-        if (text) combinedText += text + '\n\n';
+        // If still no text and note not found locally, try fetching from Firestore directly
+        if (!text) {
+          try {
+            const { fetchDoc, noteDoc } = await import('../firebase/firestore');
+            const firestoreNote = await fetchDoc(noteDoc(id));
+            if (firestoreNote?.url) {
+              console.info(`[EduWrap] Fetched PDF URL from Firestore for flashcards: ${firestoreNote.title || id}`);
+              text = await processPDFFromUrl(id, firestoreNote.url);
+            }
+          } catch (fsErr) {
+            console.warn(`[EduWrap] Firestore fallback failed for PDF: ${id}`, fsErr);
+          }
+        }
+
+        if (text) {
+          combinedText += text + '\n\n';
+          console.info(`[EduWrap] Successfully extracted ${text.length} chars from PDF: ${id}`);
+        } else {
+          console.warn(`[EduWrap] No text extracted from PDF: ${id} — it may be image-only`);
+        }
       } catch (err) {
-        console.error('Failed to read text for pdf:', id, err);
+        // Individual PDF failure should not abort the entire deck generation
+        console.error(`[EduWrap] Failed to read text for PDF: ${id}`, err);
       }
     }
 

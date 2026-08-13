@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { CheckCircle2, Award, MessageSquare } from 'lucide-react';
+import { CheckCircle2, Award, MessageSquare, EyeOff } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 import VoteControls from './VoteControls';
 
@@ -38,10 +38,23 @@ export default function AnswerCard({ answer, doubtId, userVote, onVote, isBest =
         <div className="flex-1 min-w-0">
           {/* Author */}
           <div className="flex items-center gap-2 mb-3">
-            <Avatar initials={answer.author.initials} size="sm" />
+            {answer.author.isAnonymous ? (
+              <div className="w-7 h-7 rounded-full bg-(--bg-elevated) border border-(--border-default) flex items-center justify-center">
+                <EyeOff size={13} className="text-(--text-muted)" />
+              </div>
+            ) : (
+              <Avatar initials={answer.author.initials} size="sm" />
+            )}
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-(--text-primary)">{answer.author.name}</span>
+                <span className="text-sm font-semibold text-(--text-primary)">
+                  {answer.author.isAnonymous ? 'Anonymous' : answer.author.name}
+                </span>
+                {answer.author.isAnonymous && (
+                  <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider text-(--text-muted) bg-(--bg-elevated) border border-(--border-default) px-1.5 py-0.5 rounded-full">
+                    Anon
+                  </span>
+                )}
                 {answer.isVerified && (
                   <span className="inline-flex items-center gap-0.5 text-[9px] font-bold uppercase tracking-wider text-[color:oklch(0.58_0.22_var(--accent-hue))] bg-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.1)] px-1.5 py-0.5 rounded-full">
                     <Award size={9} /> Verified

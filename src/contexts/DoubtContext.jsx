@@ -115,13 +115,19 @@ export function DoubtProvider({ children }) {
   const addDoubt = useCallback(async (doubtData) => {
     if (!uid) return null;
 
+    const isAnon = doubtData.isAnonymous || false;
+    const author = isAnon
+      ? { id: uid, name: 'Anonymous', initials: '?', isAnonymous: true }
+      : {
+          id: uid,
+          name: user.name || 'Anonymous',
+          initials: (user.name || 'A').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+          isAnonymous: false,
+        };
+
     const id = await createDoc(doubtsRef, {
       ...doubtData,
-      author: {
-        id: uid,
-        name: user.name || 'Anonymous',
-        initials: (user.name || 'A').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
-      },
+      author,
       upvotes: 0,
       downvotes: 0,
       viewCount: 0,
@@ -203,14 +209,20 @@ export function DoubtProvider({ children }) {
     const doubt = doubts.find(d => d.id === doubtId);
     if (!doubt) return;
 
+    const isAnon = answerData.isAnonymous || false;
+    const author = isAnon
+      ? { id: uid, name: 'Anonymous', initials: '?', isAnonymous: true }
+      : {
+          id: uid,
+          name: user.name || 'Anonymous',
+          initials: (user.name || 'A').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+          isAnonymous: false,
+        };
+
     const newAnswer = {
       id: `ans_${Date.now()}`,
       ...answerData,
-      author: {
-        id: uid,
-        name: user.name || 'Anonymous',
-        initials: (user.name || 'A').split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
-      },
+      author,
       upvotes: 0,
       isBestAnswer: false,
       isVerified: false,

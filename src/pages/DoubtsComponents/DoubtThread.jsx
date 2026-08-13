@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, MessageSquare, Eye, Bookmark, Sparkles, Send } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Eye, Bookmark, Sparkles, Send, EyeOff } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -18,6 +18,7 @@ export default function DoubtThread({ doubt, userVotes, onVoteDoubt, onVoteAnswe
   const { user } = useUser();
   const [answerText, setAnswerText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnonymousAnswer, setIsAnonymousAnswer] = useState(false);
 
   const bestAnswer = doubt.answers.find(a => a.isBestAnswer);
   const otherAnswers = doubt.answers.filter(a => !a.isBestAnswer);
@@ -29,8 +30,10 @@ export default function DoubtThread({ doubt, userVotes, onVoteDoubt, onVoteAnswe
       onAddAnswer(doubt.id, {
         author: { id: 'me', name: user?.name || 'You', initials: (user?.name || 'Y').charAt(0).toUpperCase() },
         body: answerText,
+        isAnonymous: isAnonymousAnswer,
       });
       setAnswerText('');
+      setIsAnonymousAnswer(false);
       setIsSubmitting(false);
     }, 500);
   };
@@ -86,9 +89,22 @@ export default function DoubtThread({ doubt, userVotes, onVoteDoubt, onVoteAnswe
 
               <div className="flex items-center justify-between pt-4 border-t border-(--border-default)">
                 <div className="flex items-center gap-3">
-                  <Avatar initials={doubt.author.initials} size="sm" />
+                  {doubt.author.isAnonymous ? (
+                    <div className="w-8 h-8 rounded-full bg-(--bg-elevated) border border-(--border-default) flex items-center justify-center">
+                      <EyeOff size={14} className="text-(--text-muted)" />
+                    </div>
+                  ) : (
+                    <Avatar initials={doubt.author.initials} size="sm" />
+                  )}
                   <div>
-                    <span className="text-sm font-semibold">{doubt.author.name}</span>
+                    <span className="text-sm font-semibold">
+                      {doubt.author.isAnonymous ? 'Anonymous' : doubt.author.name}
+                    </span>
+                    {doubt.author.isAnonymous && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-(--text-muted) bg-(--bg-elevated) border border-(--border-default) px-1.5 py-0.5 rounded-full ml-2">
+                        Anon
+                      </span>
+                    )}
                     <span className="text-xs text-(--text-muted) ml-2">{doubt.createdAt}</span>
                   </div>
                 </div>
@@ -155,16 +171,35 @@ export default function DoubtThread({ doubt, userVotes, onVoteDoubt, onVoteAnswe
       {/* Sticky Answer Input */}
       <div className="shrink-0 border-t border-(--border-default) pt-4 mt-2 bg-(--bg-base)">
         <div className="flex gap-3">
-          <Avatar initials={(user?.name || 'Y').charAt(0).toUpperCase()} size="sm" className="shrink-0 mt-1" />
+          {isAnonymousAnswer ? (
+            <div className="w-8 h-8 rounded-full bg-(--bg-elevated) border border-(--border-default) flex items-center justify-center shrink-0 mt-1">
+              <EyeOff size={14} className="text-(--text-muted)" />
+            </div>
+          ) : (
+            <Avatar initials={(user?.name || 'Y').charAt(0).toUpperCase()} size="sm" className="shrink-0 mt-1" />
+          )}
           <div className="flex-1">
             <textarea
               value={answerText}
               onChange={(e) => setAnswerText(e.target.value)}
-              placeholder="Write your answer..."
+              placeholder={isAnonymousAnswer ? 'Write your anonymous answer...' : 'Write your answer...'}
               rows={2}
               className="w-full bg-(--bg-glass) border border-(--border-default) rounded-xl px-4 py-3 text-sm text-(--text-primary) placeholder:text-(--text-muted) focus:outline-none focus:border-[color:oklch(0.58_0.22_var(--accent-hue))] transition-colors resize-none"
             />
-            <div className="flex justify-end mt-2">
+            <div className="flex items-center justify-between mt-2">
+              {/* Anonymous toggle */}
+              <button
+                type="button"
+                onClick={() => setIsAnonymousAnswer(prev => !prev)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
+                  isAnonymousAnswer
+                    ? 'bg-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.1)] text-[color:oklch(0.58_0.22_var(--accent-hue))] border-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.3)]'
+                    : 'text-(--text-muted) bg-(--bg-glass) border-(--border-default) hover:text-(--text-primary)'
+                }`}
+              >
+                <EyeOff size={13} />
+                {isAnonymousAnswer ? 'Anonymous' : 'Go Anonymous'}
+              </button>
               <Button
                 variant="primary"
                 size="sm"

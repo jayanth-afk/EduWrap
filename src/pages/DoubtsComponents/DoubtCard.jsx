@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { MessageSquare, Eye, CheckCircle2, Bookmark } from 'lucide-react';
+import { MessageSquare, Eye, CheckCircle2, Bookmark, EyeOff } from 'lucide-react';
 import { Avatar } from '../../components/ui/Avatar';
 import { Badge } from '../../components/ui/Badge';
 import VoteControls from './VoteControls';
@@ -90,8 +90,21 @@ export default function DoubtCard({ doubt, userVote, isSaved, onVote, onSave, on
                 <Bookmark size={14} fill={isSaved ? 'currentColor' : 'none'} />
               </button>
               <div className="flex items-center gap-2">
-                <Avatar initials={doubt.author.initials} size="xs" />
-                <span className="text-xs text-(--text-secondary) hidden sm:inline">{doubt.author.name}</span>
+                {doubt.author.isAnonymous ? (
+                  <div className="w-6 h-6 rounded-full bg-(--bg-elevated) border border-(--border-default) flex items-center justify-center">
+                    <EyeOff size={12} className="text-(--text-muted)" />
+                  </div>
+                ) : (
+                  <Avatar initials={doubt.author.initials} size="xs" />
+                )}
+                <span className="text-xs text-(--text-secondary) hidden sm:inline">
+                  {doubt.author.isAnonymous ? 'Anonymous' : doubt.author.name}
+                </span>
+                {doubt.author.isAnonymous && (
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-(--text-muted) bg-(--bg-elevated) border border-(--border-default) px-1.5 py-0.5 rounded-full hidden sm:inline">
+                    Anon
+                  </span>
+                )}
                 <span className="text-[10px] text-(--text-muted)">· {doubt.createdAt}</span>
               </div>
             </div>

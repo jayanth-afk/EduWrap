@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, CheckCircle2, Sparkles } from 'lucide-react';
+import { X, Plus, CheckCircle2, Sparkles, EyeOff, Eye } from 'lucide-react';
 import { Button, IconButton } from '../../components/ui/Button';
 import { useUser } from '../../contexts/UserContext';
 
@@ -20,6 +20,7 @@ export default function AskDoubtModal({ isOpen, onClose, onSubmit }) {
     category: '',
     tags: '',
     difficulty: 'beginner',
+    isAnonymous: false,
   });
   const [submitState, setSubmitState] = useState('idle'); // idle | loading | success
 
@@ -32,12 +33,13 @@ export default function AskDoubtModal({ isOpen, onClose, onSubmit }) {
       const newId = onSubmit({
         ...formData,
         tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
+        isAnonymous: formData.isAnonymous,
         author: { id: 'me', name: user?.name || 'You', initials: (user?.name || 'Y').charAt(0).toUpperCase() },
         scope: 'global',
       });
       setSubmitState('success');
       setTimeout(() => {
-        setFormData({ title: '', body: '', category: '', tags: '', difficulty: 'beginner' });
+        setFormData({ title: '', body: '', category: '', tags: '', difficulty: 'beginner', isAnonymous: false });
         setSubmitState('idle');
         onClose(newId);
       }, 1200);
@@ -168,6 +170,36 @@ export default function AskDoubtModal({ isOpen, onClose, onSubmit }) {
                       ))}
                     </div>
                   )}
+                </div>
+
+                {/* Anonymous Toggle */}
+                <div className="flex items-center justify-between p-4 rounded-2xl bg-(--bg-glass) border border-(--border-default)">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${
+                      formData.isAnonymous
+                        ? 'bg-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.15)] text-[color:oklch(0.58_0.22_var(--accent-hue))]'
+                        : 'bg-(--bg-elevated) text-(--text-muted)'
+                    }`}>
+                      {formData.isAnonymous ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </div>
+                    <div>
+                      <div className="text-sm font-semibold text-(--text-primary)">Post Anonymously</div>
+                      <div className="text-[10px] text-(--text-muted)">Your identity will be hidden from everyone</div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(p => ({ ...p, isAnonymous: !p.isAnonymous }))}
+                    className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${
+                      formData.isAnonymous
+                        ? 'bg-[color:oklch(0.58_0.22_var(--accent-hue))]'
+                        : 'bg-(--border-default)'
+                    }`}
+                  >
+                    <div className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform duration-200 ${
+                      formData.isAnonymous ? 'translate-x-[22px]' : 'translate-x-0.5'
+                    }`} />
+                  </button>
                 </div>
 
                 <Button type="submit" variant="primary" className="w-full h-12 text-base shadow-(--shadow-glow)" disabled={!formData.title.trim() || !formData.category}>

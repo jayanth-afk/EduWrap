@@ -101,6 +101,108 @@ async function callGroqAPI(messages, model = PRIMARY_MODEL) {
 }
 
 /**
+ * Secondary AI pass — filter generated questions for relevance using the fast 8B model.
+ * Evaluates each question against the source material and removes irrelevant/poor-quality ones.
+ * Uses fail-open pattern: if filtering fails, all questions are returned unfiltered.
+ *
+ * @param {Array} questions - Generated quiz questions
+ * @param {string} sourceTextExcerpt - First portion of source text for context
+ * @returns {Promise<Array>} Filtered questions (only relevant ones)
+ */
+async function filterQuestionsByRelevance(questions, sourceTextExcerpt) {
+  if (!questions || questions.length === 0) return questions;
+
+  const apiKey = getGroqApiKey();
+  if (!apiKey) return questions; // No key — skip filtering
+
+  try {
+    // Send a compact representation of questions for filtering
+    const questionsForReview = questions.map((q, i) => ({
+      index: i,
+      question: q.question,
+      options: q.options,
+      correctAnswer: q.correctAnswer,
+    }));
+
+    const prompt = `You are a strict academic quality reviewer. Review each quiz question below and determine if it is RELEVANT and HIGH-QUALITY based on the source study material provided.
+
+A question is RELEVANT if:
+1. It directly tests a concept, fact, mechanism, or definition from the source material
+2. It is clearly worded and unambiguous
+3. All 4 options are plausible and distinct
+4. It tests understanding, not just surface-level pattern matching
+5. It is NOT a trivial fill-in-the-blank with a random word removed
+
+A question is IRRELEVANT if:
+1. It tests something NOT covered in the source material
+2. It is poorly worded, ambiguous, or confusing
+3. The options are too similar or obviously wrong
+4. It is a trivial "fill in the blank" that removes a random word
+5. It is generic and could apply to any topic
+
+For each question, output its index and whether it is "relevant" or "irrelevant".
+
+Return a JSON object:
+{
+  "evaluations": [
+    { "index": 0, "verdict": "relevant", "reason": "Tests core concept of X" },
+    { "index": 1, "verdict": "irrelevant", "reason": "Too generic, not specific to material" }
+  ]
+}
+
+SOURCE MATERIAL (excerpt):
+${sourceTextExcerpt.substring(0, 8000)}
+
+QUESTIONS TO REVIEW:
+${JSON.stringify(questionsForReview, null, 2)}`;
+
+    console.info(`[EduWrap] Running Groq AI relevance filtering on ${questions.length} questions...`);
+
+    // Use the fast model for filtering to stay within rate limits
+    const result = await callGroqAPI([
+      { role: 'system', content: 'You are a strict academic quiz quality reviewer. Output only valid JSON.' },
+      { role: 'user', content: prompt },
+    ], FALLBACK_MODEL);
+
+    const evaluations = result?.evaluations || [];
+
+    if (!Array.isArray(evaluations) || evaluations.length === 0) {
+      console.warn('[EduWrap] Groq AI filtering returned no evaluations — keeping all questions');
+      return questions;
+    }
+
+    // Build a set of relevant indices
+    const relevantIndices = new Set();
+    for (const ev of evaluations) {
+      if (typeof ev.index === 'number' && ev.verdict === 'relevant') {
+        relevantIndices.add(ev.index);
+      }
+    }
+
+    // If AI marked everything as irrelevant (unlikely but defensive), return top half
+    if (relevantIndices.size === 0) {
+      console.warn('[EduWrap] AI marked all questions irrelevant — returning all as fallback');
+      return questions;
+    }
+
+    const filtered = questions.filter((_, i) => relevantIndices.has(i));
+    console.info(`[EduWrap] Groq AI filtering: ${filtered.length}/${questions.length} questions passed relevance check`);
+
+    // If too few survived, return all (fail-open)
+    if (filtered.length < Math.ceil(questions.length * 0.3)) {
+      console.warn('[EduWrap] Too few questions survived filtering — returning all');
+      return questions;
+    }
+
+    return filtered;
+  } catch (err) {
+    // Fail-open: if filtering fails, return all questions unfiltered
+    console.warn('[EduWrap] Groq AI relevance filtering failed — returning all questions:', err.message || err);
+    return questions;
+  }
+}
+
+/**
  * Generate intelligent, conceptual Multiple Choice Quiz Questions from source material.
  * @param {string} text - Raw extracted text from PDF(s)
  * @param {number} count - Target number of questions (default 10)
@@ -120,7 +222,7 @@ export async function generateSmartQuiz(text, count = 10) {
   if (apiKey) {
     try {
       const prompt = `You are an expert university professor and exam creator.
-Analyze the following study material and generate exactly ${count} highly relevant, conceptual, and rigorous multiple-choice questions.
+Analyze the following study material and generate exactly ${count + 5} highly relevant, conceptual, and rigorous multiple-choice questions.
 
 GUIDELINES:
 1. Do NOT generate fill-in-the-blank or masked sentences (avoid "________ is an algorithm").
@@ -167,7 +269,9 @@ ${sourceText}`;
           });
 
         if (validated.length > 0) {
-          return validated.slice(0, count);
+          // Run AI relevance filtering on the generated questions
+          const filtered = await filterQuestionsByRelevance(validated, sourceText);
+          return filtered.slice(0, count);
         }
       }
     } catch (aiError) {

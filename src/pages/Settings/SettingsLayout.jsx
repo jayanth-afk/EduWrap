@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Palette, Bell, ShieldAlert, Flame, BrainCircuit } from 'lucide-react';
+import { User, Palette, Bell, ShieldAlert, Flame, BrainCircuit, Shield } from 'lucide-react';
+import { useUser } from '../../contexts/UserContext';
 import AppearanceSettings from './AppearanceSettings';
 import ProfileSettings from './ProfileSettings';
 import NotificationSettings from './NotificationSettings';
 import FirebaseUsageSettings from './FirebaseUsageSettings';
 import AISettings from './AISettings';
 import DangerZone from './DangerZone';
+import AdminPanel from './AdminPanel';
 
-const TABS = [
+const BASE_TABS = [
   { id: 'profile', label: 'Profile', icon: User, component: ProfileSettings },
   { id: 'ai', label: 'Groq AI & Models', icon: BrainCircuit, component: AISettings },
   { id: 'appearance', label: 'Appearance', icon: Palette, component: AppearanceSettings },
@@ -17,8 +19,13 @@ const TABS = [
   { id: 'danger', label: 'Danger Zone', icon: ShieldAlert, component: DangerZone },
 ];
 
+const ADMIN_TAB = { id: 'admin', label: 'Admin Panel', icon: Shield, component: AdminPanel };
+
 export default function SettingsLayout() {
   const [activeTab, setActiveTab] = useState('profile');
+  const { isAdmin, isCoAdmin } = useUser();
+
+  const TABS = (isAdmin || isCoAdmin) ? [ADMIN_TAB, ...BASE_TABS] : BASE_TABS;
 
   const ActiveComponent = TABS.find(tab => tab.id === activeTab)?.component || ProfileSettings;
 
