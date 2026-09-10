@@ -34,17 +34,32 @@ export function FlashcardProvider({ children }) {
       return;
     }
 
-    const q = query(flashcardDecksRef, where('userId', '==', uid), orderBy('createdAt', 'desc'), limit(30));
-    const unsubscribe = safeOnSnapshot(q, (snap) => {
-      setDecks(snap.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-        lastStudied: d.data().lastStudied?.toDate?.()?.toISOString() || d.data().lastStudied,
-      })));
+    const mapDocs = (snap) => snap.docs.map(d => ({
+      id: d.id,
+      ...d.data(),
+      lastStudied: d.data().lastStudied?.toDate?.()?.toISOString() || d.data().lastStudied,
+      createdAt: d.data().createdAt?.toDate?.()?.toISOString() || d.data().createdAt,
+    }));
+
+    // Try the ideal query first (requires composite index)
+    const idealQuery = query(flashcardDecksRef, where('userId', '==', uid), orderBy('createdAt', 'desc'), limit(30));
+    let unsubscribe = safeOnSnapshot(idealQuery, (snap) => {
+      setDecks(mapDocs(snap));
       setLoading(false);
     }, (err) => {
-      console.error('Flashcards listener error:', err);
-      setLoading(false);
+      console.warn('Flashcards ideal query failed (missing index?), falling back to simple query:', err.message);
+      // Fallback: simpler query without orderBy (no composite index needed)
+      const fallbackQuery = query(flashcardDecksRef, where('userId', '==', uid), limit(30));
+      unsubscribe = safeOnSnapshot(fallbackQuery, (snap) => {
+        const docs = mapDocs(snap);
+        docs.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        setDecks(docs);
+        setLoading(false);
+      }, (fallbackErr) => {
+        console.error('Flashcards fallback listener also failed:', fallbackErr);
+        setDecks([]);
+        setLoading(false);
+      });
     });
 
     return () => unsubscribe();

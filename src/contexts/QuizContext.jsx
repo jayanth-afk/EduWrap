@@ -34,18 +34,33 @@ export function QuizProvider({ children }) {
       return;
     }
 
-    const q = query(quizzesRef, where('userId', '==', uid), orderBy('createdAt', 'desc'), limit(30));
-    const unsubscribe = safeOnSnapshot(q, (snap) => {
-      setQuizzes(snap.docs.map(d => ({
-        id: d.id,
-        ...d.data(),
-        completedAt: d.data().completedAt?.toDate?.()?.toISOString() || d.data().completedAt,
-        createdAt: d.data().createdAt?.toDate?.()?.toISOString() || d.data().createdAt,
-      })));
+    const mapDocs = (snap) => snap.docs.map(d => ({
+      id: d.id,
+      ...d.data(),
+      completedAt: d.data().completedAt?.toDate?.()?.toISOString() || d.data().completedAt,
+      createdAt: d.data().createdAt?.toDate?.()?.toISOString() || d.data().createdAt,
+    }));
+
+    // Try the ideal query first (requires composite index)
+    const idealQuery = query(quizzesRef, where('userId', '==', uid), orderBy('createdAt', 'desc'), limit(30));
+    let unsubscribe = safeOnSnapshot(idealQuery, (snap) => {
+      setQuizzes(mapDocs(snap));
       setLoading(false);
     }, (err) => {
-      console.error('Quizzes listener error:', err);
-      setLoading(false);
+      console.warn('Quizzes ideal query failed (missing index?), falling back to simple query:', err.message);
+      // Fallback: simpler query without orderBy (no composite index needed)
+      const fallbackQuery = query(quizzesRef, where('userId', '==', uid), limit(30));
+      unsubscribe = safeOnSnapshot(fallbackQuery, (snap) => {
+        const docs = mapDocs(snap);
+        // Sort client-side since we can't orderBy in the query
+        docs.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+        setQuizzes(docs);
+        setLoading(false);
+      }, (fallbackErr) => {
+        console.error('Quizzes fallback listener also failed:', fallbackErr);
+        setQuizzes([]);
+        setLoading(false);
+      });
     });
 
     return () => unsubscribe();
@@ -115,6 +130,7 @@ export function QuizProvider({ children }) {
       score: null,
       answers: [],
       completedAt: null,
+      createdAt: serverTimestamp(),
     });
 
     return quizId;

@@ -13,6 +13,14 @@ export default function QuizSession() {
   const [isFinished, setIsFinished] = useState(false);
 
   if (!quiz) return null;
+  if (!quiz.questions || quiz.questions.length === 0) {
+    return (
+      <div className="flex-1 w-full h-[calc(100vh-4rem)] flex flex-col items-center justify-center bg-(--bg-primary) rounded-tl-xl border-l border-t border-(--border-subtle)">
+        <p className="text-(--text-secondary) mb-4">This quiz has no questions.</p>
+        <button onClick={() => setActiveQuizId(null)} className="text-[color:oklch(0.58_0.22_var(--accent-hue))] font-semibold hover:underline cursor-pointer">Back to Library</button>
+      </div>
+    );
+  }
 
   const alreadyCompleted = quiz.score !== null;
   const question = quiz.questions[currentIndex];

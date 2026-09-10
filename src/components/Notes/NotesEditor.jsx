@@ -51,7 +51,10 @@ export default function NotesEditor() {
       {/* Top Action Bar */}
       <div className="h-14 border-b border-(--border-subtle) flex items-center justify-between px-6 shrink-0 bg-(--bg-primary)/80 backdrop-blur-md sticky top-0 z-10">
         <div className="text-xs text-(--text-tertiary) font-mono">
-          Last edited: {new Date(activeNote.lastEdited).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          Last edited: {(() => {
+            const d = new Date(activeNote.lastEdited);
+            return isNaN(d.getTime()) ? (activeNote.lastEdited || 'Recently') : d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          })()}
         </div>
         <div className="flex items-center gap-2">
           <button

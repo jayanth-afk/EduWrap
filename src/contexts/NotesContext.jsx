@@ -99,8 +99,7 @@ export function NotesProvider({ children }) {
   useEffect(() => {
     if (!uid) return;
 
-    const q = query(notesRef, where('userId', '==', uid), orderBy('lastEdited', 'desc'), limit(50));
-    const unsubscribe = safeOnSnapshot(q, (snap) => {
+    const mergeWithDefaults = (snap) => {
       if (snap && snap.docs && snap.docs.length > 0) {
         const firestoreNotes = snap.docs.map(d => ({
           id: d.id,
@@ -108,14 +107,24 @@ export function NotesProvider({ children }) {
           lastEdited: d.data().lastEdited?.toDate?.()?.toISOString() || d.data().lastEdited || 'Just now',
         }));
 
-        setNotes(prev => {
+        setNotes(() => {
           const fsIds = new Set(firestoreNotes.map(n => n.id));
           const unmergedDefaults = DEFAULT_NOTES.filter(n => !fsIds.has(n.id));
           return [...firestoreNotes, ...unmergedDefaults];
         });
       }
-    }, (err) => {
-      console.warn('Notes Firestore listener warning:', err);
+    };
+
+    // Try the ideal query first (requires composite index)
+    const idealQuery = query(notesRef, where('userId', '==', uid), orderBy('lastEdited', 'desc'), limit(50));
+    let unsubscribe = safeOnSnapshot(idealQuery, mergeWithDefaults, (err) => {
+      console.warn('Notes ideal query failed (missing index?), falling back to simple query:', err.message);
+      // Fallback: simpler query without orderBy (no composite index needed)
+      const fallbackQuery = query(notesRef, where('userId', '==', uid), limit(50));
+      unsubscribe = safeOnSnapshot(fallbackQuery, mergeWithDefaults, (fallbackErr) => {
+        console.warn('Notes fallback listener also failed:', fallbackErr);
+        // Keep DEFAULT_NOTES as-is — they're already the initial state
+      });
     });
 
     return () => unsubscribe();

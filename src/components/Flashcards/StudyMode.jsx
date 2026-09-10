@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useFlashcards } from '../../contexts/FlashcardContext';
-import { ArrowLeft, Check, X, RotateCcw, Sparkles } from 'lucide-react';
+import { ArrowLeft, Check, X, RotateCcw, RotateCw, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Stack from '../ui/Stack';
 import Flashcard from './Flashcard';
@@ -8,6 +8,7 @@ import Flashcard from './Flashcard';
 export default function StudyMode() {
   const { decks, activeDeckId, setActiveDeckId, updateCardStatus, updateDeckLastStudied } = useFlashcards();
   const deck = decks.find(d => d.id === activeDeckId);
+  const stackRef = useRef(null);
   
   const [isFinished, setIsFinished] = useState(false);
   const [sessionStats, setSessionStats] = useState({ known: 0, learning: 0 });
@@ -166,26 +167,66 @@ export default function StudyMode() {
             </div>
             
             <Stack 
+              ref={stackRef}
               cards={cardsToStudy}
               onSwipeRight={handleSwipeRight}
               onSwipeLeft={handleSwipeLeft}
               onEmpty={handleEmpty}
-              renderCard={(card) => <Flashcard front={card.front} back={card.back} />}
+              renderCard={(card, isFlipped, onFlip) => (
+                <Flashcard 
+                  front={card.front} 
+                  back={card.back} 
+                  isFlipped={isFlipped} 
+                  onFlip={onFlip} 
+                />
+              )}
             />
 
-            <div className="flex gap-16 mt-12 w-full max-w-md justify-center">
-              <div className="flex flex-col items-center">
-                <div className="w-14 h-14 rounded-full border-2 border-orange-500/30 flex items-center justify-center text-orange-500 mb-2 bg-orange-500/5 backdrop-blur-md">
+            <div className="flex items-center gap-8 md:gap-12 mt-8 md:mt-10 w-full max-w-md justify-center">
+              {/* Learning Button */}
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => stackRef.current?.swipeLeft()}
+                className="flex flex-col items-center group cursor-pointer"
+                title="Mark as Learning (Left Arrow)"
+              >
+                <div className="w-14 h-14 rounded-full border-2 border-orange-500/30 flex items-center justify-center text-orange-500 mb-2 bg-orange-500/5 group-hover:bg-orange-500/20 group-hover:border-orange-500/60 transition-all backdrop-blur-md shadow-sm">
                   <X className="w-6 h-6" />
                 </div>
-                <span className="text-xs text-(--text-muted) font-semibold uppercase tracking-wider">Learning</span>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="w-14 h-14 rounded-full border-2 border-green-500/30 flex items-center justify-center text-green-500 mb-2 bg-green-500/5 backdrop-blur-md">
+                <span className="text-xs text-(--text-muted) group-hover:text-orange-400 font-semibold uppercase tracking-wider transition-colors">Learning</span>
+              </motion.button>
+
+              {/* Flip Button */}
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => stackRef.current?.flip()}
+                className="flex flex-col items-center group cursor-pointer"
+                title="Flip Card (Spacebar)"
+              >
+                <div className="w-12 h-12 rounded-full border border-(--border-subtle) flex items-center justify-center text-(--text-secondary) mb-2 bg-(--bg-glass) group-hover:bg-(--bg-elevated) group-hover:text-[color:oklch(0.58_0.22_var(--accent-hue))] group-hover:border-[color:oklch(0.58_0.22_var(--accent-hue)_/_0.4)] transition-all backdrop-blur-md shadow-sm">
+                  <RotateCw className="w-5 h-5 transition-transform group-hover:rotate-180 duration-500" />
+                </div>
+                <span className="text-xs text-(--text-muted) group-hover:text-(--text-primary) font-semibold uppercase tracking-wider transition-colors">Flip</span>
+              </motion.button>
+
+              {/* Known Button */}
+              <motion.button
+                type="button"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={() => stackRef.current?.swipeRight()}
+                className="flex flex-col items-center group cursor-pointer"
+                title="Mark as Known (Right Arrow)"
+              >
+                <div className="w-14 h-14 rounded-full border-2 border-green-500/30 flex items-center justify-center text-green-500 mb-2 bg-green-500/5 group-hover:bg-green-500/20 group-hover:border-green-500/60 transition-all backdrop-blur-md shadow-sm">
                   <Check className="w-6 h-6" />
                 </div>
-                <span className="text-xs text-(--text-muted) font-semibold uppercase tracking-wider">Known</span>
-              </div>
+                <span className="text-xs text-(--text-muted) group-hover:text-green-400 font-semibold uppercase tracking-wider transition-colors">Known</span>
+              </motion.button>
             </div>
           </>
         )}
