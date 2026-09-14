@@ -1,0 +1,75 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Safety checks for file size (max 25MB to stay well within free-tier caps)
+    function isValidFileSize(maxMb) {
+      return request.resource.size <= maxMb * 1024 * 1024;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    // ─── USER AVATARS ───
+    // Path: users/{userId}/avatar
+    match /users/{userId}/avatar {
+      // Any authenticated user can view avatars (e.g. in rooms, chat, leaderboards)
+      allow read: if isAuthenticated();
+      // Only the user themselves can upload their avatar (up to 5MB, image format)
+      allow write: if isOwner(userId) && isValidFileSize(5) && isImage();
+      allow delete: if isOwner(userId);
+    }
+
+    // ─── USER FILES & DOCUMENTS ───
+    // Path: users/{userId}/files/{fileName}
+    match /users/{userId}/files/{fileName} {
+      // Authenticated users can view/download shared study documents
+      allow read: if isAuthenticated();
+      // Only the file owner can upload or delete their own documents (up to 25MB)
+      allow write: if isOwner(userId) && isValidFileSize(25);
+      allow delete: if isOwner(userId);
+    }
+
+    // ─── USER NOTE ATTACHMENTS & PDFS ───
+    // Path: users/{userId}/notes/{noteId}/{fileName}
+    match /users/{userId}/notes/{noteId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isValidFileSize(25);
+      allow delete: if isOwner(userId);
+    }
+
+    // ─── STUDY ROOM FILES ───
+    // Path: rooms/{roomId}/files/{fileName}
+    match /rooms/{roomId}/files/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && isValidFileSize(25);
+      allow delete: if isAuthenticated();
+    }
+
+    // ─── USER DIRECTORY FALLBACK ───
+    // Allows owner full access to any nested files under their user prefix
+    match /users/{userId}/{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(userId) && isValidFileSize(25);
+      allow delete: if isOwner(userId);
+    }
+
+    // ─── GLOBAL CATCH-ALL ───
+    // Disallows unauthenticated access and unknown writes
+    match /{allPaths=**} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+  }
+}
