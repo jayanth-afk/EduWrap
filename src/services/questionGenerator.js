@@ -210,7 +210,7 @@ function generateMultipleChoice(sentences, allTerms) {
     if (correctAnswer.length < 4 || isStopWord(correctAnswer)) continue;
 
     // Generate 3 wrong answers from other terms in the document
-    const distractors = allTerms
+    let distractors = allTerms
       .filter(t =>
         t.toLowerCase() !== correctAnswer.toLowerCase() &&
         t.length >= 4 &&
@@ -218,6 +218,21 @@ function generateMultipleChoice(sentences, allTerms) {
       )
       .sort(() => 0.5 - Math.random())
       .slice(0, 3);
+
+    // Fallback general academic distractors if document terms are limited
+    const FALLBACK_TERMS = [
+      'Abstraction', 'Algorithm', 'Architecture', 'Complexity', 'Concurrency',
+      'Encapsulation', 'Framework', 'Hierarchy', 'Interface', 'Modularity',
+      'Normalization', 'Optimization', 'Protocol', 'Recursion', 'Synchronization'
+    ];
+    if (distractors.length < 3) {
+      for (const ft of FALLBACK_TERMS) {
+        if (ft.toLowerCase() !== correctAnswer.toLowerCase() && !distractors.includes(ft)) {
+          distractors.push(ft);
+          if (distractors.length >= 3) break;
+        }
+      }
+    }
 
     if (distractors.length < 3) continue;
 

@@ -5,11 +5,11 @@
  * Uses Llama 3.3 70B Versatile on Groq Cloud with graceful local NLP fallback.
  */
 
-import { generateQuizQuestions, generateFlashcards } from './questionGenerator';
+import { generateQuizQuestions, generateFlashcards } from './questionGenerator.js';
 
 const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
-const PRIMARY_MODEL = 'llama-3.3-70b-versatile';
-const FALLBACK_MODEL = 'llama-3.1-8b-instant';
+const PRIMARY_MODEL = 'openai/gpt-oss-120b';
+const FALLBACK_MODEL = 'openai/gpt-oss-20b';
 
 /**
  * Retrieve the active Groq API key from localStorage or Vite environment variable.
@@ -19,7 +19,9 @@ export function getGroqApiKey() {
     const userKey = localStorage.getItem('eduwrap_groq_api_key');
     if (userKey && userKey.trim()) return userKey.trim();
   }
-  return import.meta.env.VITE_GROQ_API_KEY || '';
+  return (typeof import.meta !== 'undefined' && import.meta.env?.VITE_GROQ_API_KEY) ||
+         (typeof globalThis !== 'undefined' && globalThis.process?.env?.VITE_GROQ_API_KEY) ||
+         '';
 }
 
 /**
