@@ -1,0 +1,1296 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=1920, height=1080">
+    <title>EduWrap — Collaborative Study Workspace</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@600;700;800;900&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --bg-dark: #090A12;
+        --bg-surface: #121324;
+        --bg-card: rgba(22, 24, 46, 0.85);
+        --accent-violet: #8B5CF6;
+        --accent-pink: #EC4899;
+        --accent-cyan: #06B6D4;
+        --accent-emerald: #10B981;
+        --accent-amber: #F59E0B;
+        --text-white: #FFFFFF;
+        --text-muted: #94A3B8;
+        --border-glass: rgba(255, 255, 255, 0.12);
+        --border-strong: rgba(139, 92, 246, 0.35);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--bg-dark);
+        color: var(--text-white);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: radial-gradient(circle at 50% 20%, #171836 0%, #090A12 70%);
+      }
+
+      /* Ambient Glow Spheres */
+      .glow-orb {
+        position: absolute;
+        border-radius: 50%;
+        filter: blur(120px);
+        pointer-events: none;
+        opacity: 0.45;
+      }
+      .orb-1 {
+        top: -150px;
+        left: 20%;
+        width: 700px;
+        height: 700px;
+        background: radial-gradient(circle, rgba(139, 92, 246, 0.5) 0%, transparent 70%);
+      }
+      .orb-2 {
+        bottom: -200px;
+        right: 15%;
+        width: 800px;
+        height: 800px;
+        background: radial-gradient(circle, rgba(236, 72, 153, 0.35) 0%, transparent 70%);
+      }
+      .orb-3 {
+        top: 30%;
+        left: -200px;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, transparent 70%);
+      }
+
+      /* Persistent Top Brand Bar */
+      .top-brand-bar {
+        position: absolute;
+        top: 24px;
+        left: 64px;
+        right: 64px;
+        height: 56px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        z-index: 100;
+        padding: 0 28px;
+        background: rgba(18, 19, 36, 0.75);
+        backdrop-filter: blur(20px);
+        border: 1px solid var(--border-glass);
+        border-radius: 18px;
+      }
+      .brand-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .brand-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 8px;
+        object-fit: cover;
+        box-shadow: 0 0 16px rgba(139, 92, 246, 0.6);
+      }
+      .brand-name {
+        font-family: 'Sora', sans-serif;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.5px;
+        color: #FFFFFF;
+      }
+      .brand-tagline {
+        font-size: 13px;
+        color: var(--text-muted);
+        font-weight: 500;
+        margin-left: 8px;
+        padding-left: 12px;
+        border-left: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      .brand-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 14px;
+        background: rgba(139, 92, 246, 0.18);
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        color: #C4B5FD;
+        letter-spacing: 0.5px;
+      }
+      .pulse-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #10B981;
+        box-shadow: 0 0 10px #10B981;
+      }
+
+      /* Global Video Timeline Progress Line */
+      .bottom-progress-bar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        height: 4px;
+        width: 0%;
+        background: linear-gradient(90deg, #8B5CF6, #EC4899, #06B6D4);
+        z-index: 100;
+      }
+
+      /* Clips / Scenes */
+      .clip {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 95px 60px 40px 60px;
+        overflow: hidden;
+      }
+
+      /* Typography Utilities */
+      .section-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 18px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        margin-bottom: 14px;
+      }
+      .badge-red {
+        background: rgba(239, 68, 68, 0.18);
+        border: 1px solid rgba(239, 68, 68, 0.4);
+        color: #FCA5A5;
+      }
+      .badge-violet {
+        background: rgba(139, 92, 246, 0.18);
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        color: #C4B5FD;
+      }
+      .badge-cyan {
+        background: rgba(6, 182, 212, 0.18);
+        border: 1px solid rgba(6, 182, 212, 0.4);
+        color: #67E8F9;
+      }
+      .badge-emerald {
+        background: rgba(16, 185, 129, 0.18);
+        border: 1px solid rgba(16, 185, 129, 0.4);
+        color: #6EE7B7;
+      }
+      .badge-amber {
+        background: rgba(245, 158, 11, 0.18);
+        border: 1px solid rgba(245, 158, 11, 0.4);
+        color: #FCD34D;
+      }
+
+      .main-headline {
+        font-family: 'Sora', sans-serif;
+        font-size: 54px;
+        font-weight: 800;
+        line-height: 1.15;
+        letter-spacing: -1.2px;
+        text-align: center;
+        max-width: 1300px;
+        margin-bottom: 12px;
+      }
+      .sub-headline {
+        font-size: 20px;
+        line-height: 1.45;
+        color: var(--text-muted);
+        text-align: center;
+        max-width: 950px;
+        margin-bottom: 24px;
+      }
+      .gradient-text-violet {
+        background: linear-gradient(135deg, #C4B5FD 0%, #8B5CF6 50%, #EC4899 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      .gradient-text-red {
+        background: linear-gradient(135deg, #FCA5A5 0%, #EF4444 60%, #F97316 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+
+      /* Glass Card Component */
+      .glass-card {
+        background: var(--bg-card);
+        backdrop-filter: blur(24px);
+        border: 1px solid var(--border-glass);
+        border-radius: 20px;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, 0.4);
+      }
+
+      /* ──────────────────────────────────
+         SCENE 1: THE PROBLEM
+         ────────────────────────────────── */
+      .problem-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+        width: 100%;
+        max-width: 1400px;
+        margin-top: 10px;
+      }
+      .problem-card {
+        padding: 26px 22px;
+        border-radius: 18px;
+        background: rgba(20, 22, 42, 0.85);
+        border: 1px solid rgba(255, 255, 255, 0.09);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .problem-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .app-tag {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 3px 10px;
+        border-radius: 6px;
+      }
+      .tag-discord { background: #5865F2; color: #FFF; }
+      .tag-notion { background: #333333; color: #FFF; border: 1px solid #555; }
+      .tag-quizlet { background: #4257B2; color: #FFF; }
+      .tag-zoom { background: #0B5CFF; color: #FFF; }
+      .problem-stat {
+        font-size: 12px;
+        font-weight: 600;
+        color: #EF4444;
+      }
+      .problem-title {
+        font-family: 'Sora', sans-serif;
+        font-size: 20px;
+        font-weight: 700;
+        color: #FFF;
+      }
+      .problem-desc {
+        font-size: 15px;
+        color: #94A3B8;
+        line-height: 1.4;
+      }
+      .problem-quote {
+        margin-top: 26px;
+        padding: 12px 32px;
+        border-radius: 999px;
+        background: rgba(239, 68, 68, 0.12);
+        border: 1px solid rgba(239, 68, 68, 0.35);
+        font-size: 18px;
+        font-weight: 700;
+        color: #FCA5A5;
+        text-align: center;
+      }
+
+      /* ──────────────────────────────────
+         SCENE 2: THE SOLUTION
+         ────────────────────────────────── */
+      .solution-mockup-wrapper {
+        position: relative;
+        width: 100%;
+        max-width: 1050px;
+        border-radius: 20px;
+        overflow: hidden;
+        border: 2px solid rgba(139, 92, 246, 0.4);
+        box-shadow: 0 0 50px rgba(139, 92, 246, 0.3), 0 25px 60px rgba(0, 0, 0, 0.7);
+        background: #111226;
+      }
+      .mockup-window-header {
+        height: 38px;
+        background: #1A1B36;
+        display: flex;
+        align-items: center;
+        padding: 0 16px;
+        gap: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .mac-dot {
+        width: 11px;
+        height: 11px;
+        border-radius: 50%;
+      }
+      .dot-red { background: #FF5F56; }
+      .dot-yellow { background: #FFBD2E; }
+      .dot-green { background: #27C93F; }
+      .mockup-img {
+        width: 100%;
+        max-height: 480px;
+        object-fit: cover;
+        object-position: top;
+        display: block;
+      }
+      .feature-pills-row {
+        display: flex;
+        gap: 16px;
+        margin-top: 18px;
+      }
+      .feature-pill {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 20px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 14px;
+        font-size: 15px;
+        font-weight: 600;
+        backdrop-filter: blur(12px);
+      }
+
+      /* ──────────────────────────────────
+         SCENE 3: STUDY ROOMS
+         ────────────────────────────────── */
+      .room-container {
+        width: 100%;
+        max-width: 1350px;
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+      }
+      .video-grid-box {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .student-video-tile {
+        position: relative;
+        background: #15162E;
+        border-radius: 18px;
+        aspect-ratio: 16/9;
+        overflow: hidden;
+        border: 2px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 14px;
+      }
+      .tile-speaking {
+        border-color: #10B981;
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+      }
+      .student-avatar-center {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .avatar-circle {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Sora', sans-serif;
+        font-size: 24px;
+        font-weight: 800;
+        color: #FFF;
+      }
+      .av-blue { background: linear-gradient(135deg, #3B82F6, #1D4ED8); }
+      .av-purple { background: linear-gradient(135deg, #8B5CF6, #6D28D9); }
+      .av-pink { background: linear-gradient(135deg, #EC4899, #BE185D); }
+      .av-emerald { background: linear-gradient(135deg, #10B981, #047857); }
+      .video-tile-footer {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .student-name-tag {
+        font-size: 13px;
+        font-weight: 700;
+        background: rgba(0, 0, 0, 0.65);
+        padding: 5px 12px;
+        border-radius: 8px;
+        backdrop-filter: blur(8px);
+      }
+      .speaking-wave {
+        display: flex;
+        gap: 3px;
+        align-items: center;
+      }
+      .wave-bar {
+        width: 4px;
+        background: #10B981;
+        border-radius: 2px;
+      }
+
+      .room-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .timer-card {
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        border: 2px solid rgba(245, 158, 11, 0.35);
+        background: rgba(24, 20, 36, 0.85);
+      }
+      .timer-display {
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 46px;
+        font-weight: 800;
+        color: #F59E0B;
+        letter-spacing: -2px;
+        margin: 8px 0;
+        text-shadow: 0 0 25px rgba(245, 158, 11, 0.4);
+      }
+      .chat-mini-preview {
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .chat-bubble {
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 13px;
+        line-height: 1.4;
+      }
+      .bubble-them {
+        background: rgba(255, 255, 255, 0.08);
+        align-self: flex-start;
+      }
+      .bubble-me {
+        background: rgba(139, 92, 246, 0.3);
+        border: 1px solid rgba(139, 92, 246, 0.4);
+        align-self: flex-end;
+      }
+
+      /* ──────────────────────────────────
+         SCENE 4: MULTIPLAYER NOTES
+         ────────────────────────────────── */
+      .notes-editor-box {
+        width: 100%;
+        max-width: 1250px;
+        background: #13142B;
+        border-radius: 20px;
+        border: 1px solid var(--border-glass);
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+        overflow: hidden;
+      }
+      .editor-toolbar {
+        height: 48px;
+        background: #1A1C3B;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+      }
+      .editor-tools {
+        display: flex;
+        gap: 10px;
+      }
+      .tool-btn {
+        padding: 5px 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #CBD5E1;
+      }
+      .editor-body {
+        padding: 36px 48px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        position: relative;
+      }
+      .doc-h1 {
+        font-family: 'Sora', sans-serif;
+        font-size: 32px;
+        font-weight: 800;
+        color: #FFF;
+      }
+      .cursor-tag {
+        display: inline-block;
+        padding: 2px 8px;
+        border-radius: 5px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #FFF;
+        margin-left: 6px;
+        vertical-align: middle;
+      }
+      .cursor-alex {
+        background: #C4B5FD;
+        color: #1E1B4B;
+      }
+      .cursor-priya {
+        background: #6EE7B7;
+        color: #064E3B;
+      }
+      .editor-code-snippet {
+        background: #0B0C18;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 16px 20px;
+        font-family: 'JetBrains Mono', monospace;
+        font-size: 15px;
+        color: #E2E8F0;
+        line-height: 1.5;
+      }
+
+      /* ──────────────────────────────────
+         SCENE 5: 3D FLASHCARDS
+         ────────────────────────────────── */
+      .flashcard-stage {
+        perspective: 1200px;
+        width: 820px;
+        height: 440px;
+        position: relative;
+        margin-top: 10px;
+      }
+      .flashcard-inner {
+        position: absolute;
+        inset: 0;
+        border-radius: 24px;
+        transform-style: preserve-3d;
+        box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+      }
+      .card-face {
+        position: absolute;
+        inset: 0;
+        backface-visibility: hidden;
+        border-radius: 24px;
+        padding: 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        background: linear-gradient(145deg, #1A1C38 0%, #111226 100%);
+        border: 2px solid rgba(139, 92, 246, 0.4);
+      }
+      .card-back {
+        transform: rotateY(180deg);
+        background: linear-gradient(145deg, #1C2638 0%, #0F1A2B 100%);
+        border-color: rgba(6, 182, 212, 0.45);
+      }
+      .card-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .card-question {
+        font-family: 'Sora', sans-serif;
+        font-size: 30px;
+        font-weight: 700;
+        line-height: 1.35;
+        color: #FFF;
+      }
+      .card-answer {
+        font-size: 21px;
+        line-height: 1.5;
+        color: #E2E8F0;
+      }
+      .card-progress-bar {
+        width: 100%;
+        height: 7px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 10px;
+      }
+      .card-progress-fill {
+        height: 100%;
+        width: 88%;
+        background: #10B981;
+        border-radius: 4px;
+      }
+
+      /* ──────────────────────────────────
+         SCENE 6: AI QUIZ GENERATOR
+         ────────────────────────────────── */
+      .quiz-stage-wrapper {
+        width: 100%;
+        max-width: 1250px;
+        display: grid;
+        grid-template-columns: 1fr 1.6fr;
+        gap: 28px;
+      }
+      .pdf-upload-card {
+        padding: 30px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        gap: 16px;
+        border: 2px dashed rgba(139, 92, 246, 0.5);
+      }
+      .pdf-icon-box {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        background: rgba(239, 68, 68, 0.15);
+        border: 2px solid rgba(239, 68, 68, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Sora', sans-serif;
+        font-size: 24px;
+        font-weight: 800;
+        color: #EF4444;
+      }
+      .ai-scan-bar {
+        width: 100%;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+      .ai-scan-fill {
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(90deg, #8B5CF6, #EC4899);
+      }
+
+      .quiz-interactive-card {
+        padding: 32px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+      }
+      .quiz-options-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .quiz-opt {
+        padding: 14px 18px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .opt-correct {
+        background: rgba(16, 185, 129, 0.2);
+        border-color: #10B981;
+        box-shadow: 0 0 16px rgba(16, 185, 129, 0.3);
+      }
+      .xp-badge-pop {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 16px;
+        border-radius: 999px;
+        background: #FBBF24;
+        color: #1E1B4B;
+        font-weight: 800;
+        font-size: 14px;
+        align-self: flex-start;
+        box-shadow: 0 0 20px rgba(245, 158, 11, 0.5);
+      }
+
+      /* ──────────────────────────────────
+         SCENE 7: ENTREPRENEURSHIP & GRAND FINALE
+         ────────────────────────────────── */
+      .scene-7-layout {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 1450px;
+        position: relative;
+      }
+      .pitch-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 22px;
+        width: 100%;
+        margin-top: 8px;
+      }
+      .pitch-stat-card {
+        padding: 26px 22px;
+        border-radius: 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .pitch-metric-value {
+        font-family: 'Sora', sans-serif;
+        font-size: 42px;
+        font-weight: 900;
+        letter-spacing: -1.5px;
+      }
+      .color-violet { color: #A78BFA; }
+      .color-pink { color: #F472B6; }
+      .color-emerald { color: #34D399; }
+      .color-amber { color: #FBBF24; }
+      .pitch-metric-title {
+        font-family: 'Sora', sans-serif;
+        font-size: 18px;
+        font-weight: 700;
+        color: #FFF;
+      }
+      .pitch-metric-desc {
+        font-size: 13.5px;
+        color: #94A3B8;
+        line-height: 1.4;
+      }
+
+      .finale-lockup {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        gap: 20px;
+      }
+      .finale-logo {
+        width: 110px;
+        height: 110px;
+        border-radius: 24px;
+        box-shadow: 0 0 60px rgba(139, 92, 246, 0.8);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+      }
+      .cta-url-card {
+        margin-top: 6px;
+        padding: 14px 46px;
+        background: linear-gradient(135deg, #7C3AED, #4F46E5);
+        border-radius: 999px;
+        font-family: 'Sora', sans-serif;
+        font-size: 22px;
+        font-weight: 800;
+        color: #FFF;
+        letter-spacing: 0.5px;
+        box-shadow: 0 0 40px rgba(124, 58, 237, 0.7);
+      }
+      .beta-subtext {
+        font-size: 17px;
+        color: #CBD5E1;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div data-hf-id="hf-962u" id="root" data-composition-id="main" data-width="1920" data-height="1080" data-duration="60">
+      <!-- Audio Track -->
+      <audio data-hf-id="hf-5zs3" id="bg-music" data-start="0" data-duration="60" data-volume="0.8" src="assets/music/track.mp3"></audio>
+
+      <!-- Ambient Glow Orbs -->
+      <div data-hf-id="hf-m57q" class="glow-orb orb-1"></div>
+      <div data-hf-id="hf-i73p" class="glow-orb orb-2"></div>
+      <div data-hf-id="hf-hffw" class="glow-orb orb-3"></div>
+
+      <!-- Persistent Brand Topbar -->
+      <header data-hf-id="hf-tj1x" class="top-brand-bar">
+        <div data-hf-id="hf-9gbf" class="brand-left">
+          <img data-hf-id="hf-0jh3" src="assets/img/logo-icon.png" alt="EduWrap Logo" class="brand-icon">
+          <span data-hf-id="hf-8xn0" class="brand-name">EduWrap</span>
+          <span data-hf-id="hf-exim" class="brand-tagline">Collaborative Study Workspace</span>
+        </div>
+        <div data-hf-id="hf-y635" class="brand-badge">
+          <span data-hf-id="hf-1iu6" class="pulse-dot"></span>
+          ENTREPRENEURSHIP 2026
+        </div>
+      </header>
+
+      <!-- Video Timeline Progress Bar -->
+      <div data-hf-id="hf-kh00" id="timeline-progress" class="bottom-progress-bar"></div>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           SCENE 1: THE PROBLEM (0.0s - 6.5s)
+           ══════════════════════════════════════════════════════════════ -->
+      <section data-hf-id="hf-8shf" id="scene-1" class="clip" data-start="0" data-duration="6.5">
+        <div data-hf-id="hf-9sp2" id="s1-content" style="display:flex; flex-direction:column; align-items:center; width:100%;">
+          <div data-hf-id="hf-4l00" class="section-badge badge-red">The Problem</div>
+          <h1 data-hf-id="hf-j8x7" class="main-headline">
+            5 Open Tabs. 3 Separate Apps.<br data-hf-id="hf-x5px">
+            <span data-hf-id="hf-64pr" class="gradient-text-red">Zero Focus.</span>
+          </h1>
+          <p data-hf-id="hf-p2wh" class="sub-headline">
+            Students waste 40% of their study time juggling disconnected tools just to prepare for one exam.
+          </p>
+
+          <div data-hf-id="hf-l2zm" class="problem-grid">
+            <div data-hf-id="hf-1rmf" id="s1-card-1" class="problem-card">
+              <div data-hf-id="hf-u9oe" class="problem-card-header">
+                <span data-hf-id="hf-u3ua" class="app-tag tag-discord">Discord</span>
+                <span data-hf-id="hf-7s0g" class="problem-stat">Fragmented</span>
+              </div>
+              <div data-hf-id="hf-e035" class="problem-title">Study Chat</div>
+              <div data-hf-id="hf-3mhj" class="problem-desc">Important questions get buried under 300 casual notifications.</div>
+            </div>
+
+            <div data-hf-id="hf-qw4s" id="s1-card-2" class="problem-card">
+              <div data-hf-id="hf-smsi" class="problem-card-header">
+                <span data-hf-id="hf-xuqc" class="app-tag tag-notion">Notion</span>
+                <span data-hf-id="hf-ju7a" class="problem-stat">Isolated</span>
+              </div>
+              <div data-hf-id="hf-xe2r" class="problem-title">Lecture Notes</div>
+              <div data-hf-id="hf-p0j6" class="problem-desc">Notes exist in private silos without real-time peer feedback.</div>
+            </div>
+
+            <div data-hf-id="hf-rnsl" id="s1-card-3" class="problem-card">
+              <div data-hf-id="hf-t13j" class="problem-card-header">
+                <span data-hf-id="hf-7gey" class="app-tag tag-quizlet">Quizlet</span>
+                <span data-hf-id="hf-xwt0" class="problem-stat">Paywalled</span>
+              </div>
+              <div data-hf-id="hf-l47l" class="problem-title">Flashcards</div>
+              <div data-hf-id="hf-fnpi" class="problem-desc">Manual deck creation takes hours and basic features are locked.</div>
+            </div>
+
+            <div data-hf-id="hf-afia" id="s1-card-4" class="problem-card">
+              <div data-hf-id="hf-tfek" class="problem-card-header">
+                <span data-hf-id="hf-y1pk" class="app-tag tag-zoom">Zoom / Meet</span>
+                <span data-hf-id="hf-33vj" class="problem-stat">Exhausting</span>
+              </div>
+              <div data-hf-id="hf-ercy" class="problem-title">Group Calls</div>
+              <div data-hf-id="hf-zcw9" class="problem-desc">Screen sharing is static with no integrated study timers or documents.</div>
+            </div>
+          </div>
+
+          <div data-hf-id="hf-9gjd" id="s1-punchline" class="problem-quote">
+            What if learning actually lived in one connected workspace?
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           SCENE 2: THE SOLUTION — EDUWRAP (6.5s - 14.5s)
+           ══════════════════════════════════════════════════════════════ -->
+      <section data-hf-id="hf-0i1u" id="scene-2" class="clip" data-start="6.5" data-duration="8">
+        <div data-hf-id="hf-62lz" id="s2-content" style="display:flex; flex-direction:column; align-items:center; width:100%;">
+          <div data-hf-id="hf-o9mc" class="section-badge badge-violet">The Solution</div>
+          <h1 data-hf-id="hf-cz4b" class="main-headline">
+            Study Smarter, <span data-hf-id="hf-0p0r" class="gradient-text-violet">Together.</span>
+          </h1>
+          <p data-hf-id="hf-ilk6" class="sub-headline">
+            EduWrap unites notes, flashcards, AI quizzes, and live study rooms in one intelligent platform.
+          </p>
+
+          <div data-hf-id="hf-05jk" id="s2-mockup" class="solution-mockup-wrapper">
+            <div data-hf-id="hf-ap0s" class="mockup-window-header">
+              <span data-hf-id="hf-abn3" class="mac-dot dot-red"></span>
+              <span data-hf-id="hf-ypqq" class="mac-dot dot-yellow"></span>
+              <span data-hf-id="hf-dffn" class="mac-dot dot-green"></span>
+              <span data-hf-id="hf-db9r" style="margin-left: 12px; font-size: 13px; font-weight: 600; color: #94A3B8;">EduWrap — Unified Collaborative Workspace</span>
+            </div>
+            <img data-hf-id="hf-yby9" src="assets/img/dashboard.png" alt="EduWrap Dashboard" class="mockup-img">
+          </div>
+
+          <div data-hf-id="hf-y48o" id="s2-pills" class="feature-pills-row">
+            <div data-hf-id="hf-dldq" class="feature-pill">📚 Real-Time Notes</div>
+            <div data-hf-id="hf-sdfs" class="feature-pill">🎥 Live Study Rooms</div>
+            <div data-hf-id="hf-1feb" class="feature-pill">⚡ AI Question Generation</div>
+            <div data-hf-id="hf-l6cs" class="feature-pill">🧠 3D Active Recall</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           SCENE 3: LIVE STUDY ROOMS & VIDEO (14.5s - 23.0s)
+           ══════════════════════════════════════════════════════════════ -->
+      <section data-hf-id="hf-xhmt" id="scene-3" class="clip" data-start="14.5" data-duration="8.5">
+        <div data-hf-id="hf-5ep8" id="s3-content" style="display:flex; flex-direction:column; align-items:center; width:100%;">
+          <div data-hf-id="hf-dejf" class="section-badge badge-cyan">Feature 01 • Collaborative Spaces</div>
+          <h1 data-hf-id="hf-eydg" class="main-headline">
+            Virtual Study Rooms with <span data-hf-id="hf-8u90" class="gradient-text-violet">Live Presence</span>
+          </h1>
+          <p data-hf-id="hf-llw4" class="sub-headline">
+            Jump into synchronous study sessions with video, audio, and synchronized Pomodoro focus intervals.
+          </p>
+
+          <div data-hf-id="hf-o1hv" class="room-container">
+            <div data-hf-id="hf-shbq" class="video-grid-box">
+              <div data-hf-id="hf-prvb" id="s3-v1" class="student-video-tile tile-speaking">
+                <div data-hf-id="hf-9wyd" class="student-avatar-center"><div data-hf-id="hf-5rya" class="avatar-circle av-purple">SK</div></div>
+                <div data-hf-id="hf-zox6" class="video-tile-footer">
+                  <span data-hf-id="hf-7ij2" class="student-name-tag">Sarah K. (Host)</span>
+                  <div data-hf-id="hf-ybzw" class="speaking-wave">
+                    <div data-hf-id="hf-nx2e" class="wave-bar" style="height: 16px;"></div>
+                    <div data-hf-id="hf-bevj" class="wave-bar" style="height: 24px;"></div>
+                    <div data-hf-id="hf-q1ey" class="wave-bar" style="height: 12px;"></div>
+                  </div>
+                </div>
+              </div>
+
+              <div data-hf-id="hf-jhah" id="s3-v2" class="student-video-tile">
+                <div data-hf-id="hf-lrgp" class="student-avatar-center"><div data-hf-id="hf-qshw" class="avatar-circle av-blue">AM</div></div>
+                <div data-hf-id="hf-rhri" class="video-tile-footer">
+                  <span data-hf-id="hf-07m4" class="student-name-tag">Alex M.</span>
+                  <span data-hf-id="hf-0g1l" style="font-size: 13px; color: #10B981; font-weight: 600;">Focusing</span>
+                </div>
+              </div>
+
+              <div data-hf-id="hf-ipmo" id="s3-v3" class="student-video-tile">
+                <div data-hf-id="hf-myds" class="student-avatar-center"><div data-hf-id="hf-b3zs" class="avatar-circle av-pink">PR</div></div>
+                <div data-hf-id="hf-rw2j" class="video-tile-footer">
+                  <span data-hf-id="hf-fkuc" class="student-name-tag">Priya R.</span>
+                  <span data-hf-id="hf-z0qt" style="font-size: 13px; color: #94A3B8;">Muted</span>
+                </div>
+              </div>
+
+              <div data-hf-id="hf-erin" id="s3-v4" class="student-video-tile">
+                <div data-hf-id="hf-mk2r" class="student-avatar-center"><div data-hf-id="hf-sait" class="avatar-circle av-emerald">YOU</div></div>
+                <div data-hf-id="hf-sadk" class="video-tile-footer">
+                  <span data-hf-id="hf-q4c0" class="student-name-tag">You</span>
+                  <span data-hf-id="hf-0x04" style="font-size: 13px; color: #10B981; font-weight: 600;">Taking Notes</span>
+                </div>
+              </div>
+            </div>
+
+            <div data-hf-id="hf-hspm" class="room-sidebar">
+              <div data-hf-id="hf-qc8f" id="s3-timer" class="glass-card timer-card">
+                <span data-hf-id="hf-zkqp" style="font-size: 13px; font-weight: 700; color: #F59E0B; text-transform: uppercase; letter-spacing: 1px;">Group Pomodoro</span>
+                <div data-hf-id="hf-7g5l" class="timer-display">24:45</div>
+                <span data-hf-id="hf-1thb" style="font-size: 12px; color: #CBD5E1; font-weight: 600;">Sprint 2 of 4 • Deep Focus Mode</span>
+              </div>
+
+              <div data-hf-id="hf-jnyd" id="s3-chat" class="glass-card chat-mini-preview">
+                <span data-hf-id="hf-75hv" style="font-size: 12px; font-weight: 700; color: #94A3B8; text-transform: uppercase;">Room Chat</span>
+                <div data-hf-id="hf-zlgk" class="chat-bubble bubble-them"><strong data-hf-id="hf-si74">Alex:</strong> Check equation (4) in the shared notes!</div>
+                <div data-hf-id="hf-3vra" class="chat-bubble bubble-me"><strong data-hf-id="hf-4qgd">You:</strong> Got it, solved and linked the flashcard deck.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           SCENE 4: MULTIPLAYER NOTES (23.0s - 31.5s)
+           ══════════════════════════════════════════════════════════════ -->
+      <section data-hf-id="hf-tck5" id="scene-4" class="clip" data-start="23" data-duration="8.5">
+        <div data-hf-id="hf-7awd" id="s4-content" style="display:flex; flex-direction:column; align-items:center; width:100%;">
+          <div data-hf-id="hf-uesv" class="section-badge badge-emerald">Feature 02 • Structured Editor</div>
+          <h1 data-hf-id="hf-toyn" class="main-headline">
+            Multiplayer Notes. <span data-hf-id="hf-mxz6" class="gradient-text-violet">One Shared Brain.</span>
+          </h1>
+          <p data-hf-id="hf-rrdg" class="sub-headline">
+            Collaborative markdown editing with live cursor presence, auto-save, and instant team sync.
+          </p>
+
+          <div data-hf-id="hf-hj8y" id="s4-editor" class="notes-editor-box">
+            <div data-hf-id="hf-e131" class="editor-toolbar">
+              <div data-hf-id="hf-r419" class="editor-tools">
+                <span data-hf-id="hf-kqdb" class="tool-btn">H1</span>
+                <span data-hf-id="hf-kc2a" class="tool-btn">H2</span>
+                <span data-hf-id="hf-dz0f" class="tool-btn">Bold</span>
+                <span data-hf-id="hf-29c1" class="tool-btn">Code</span>
+                <span data-hf-id="hf-ut2d" class="tool-btn">Quizify ✨</span>
+              </div>
+              <div data-hf-id="hf-i0b5" style="display:flex; align-items:center; gap:12px;">
+                <span data-hf-id="hf-b1t1" style="font-size: 13px; font-weight: 600; color: #10B981;">⚡ Live Sync Active</span>
+                <span data-hf-id="hf-le0n" style="font-size: 13px; color: #94A3B8;">3 Active Writers</span>
+              </div>
+            </div>
+
+            <div data-hf-id="hf-jyko" class="editor-body">
+              <div data-hf-id="hf-xifh" style="display: flex; align-items: center; justify-content: space-between;">
+                <h2 data-hf-id="hf-daxc" class="doc-h1">Distributed Systems: Consensus &amp; Fault Tolerance</h2>
+                <div data-hf-id="hf-yeow">
+                  <span data-hf-id="hf-eg4i" id="s4-cursor-1" data-layout-allow-overlap="" class="cursor-tag cursor-alex">Alex typing...</span>
+                  <span data-hf-id="hf-jf82" id="s4-cursor-2" data-layout-allow-overlap="" class="cursor-tag cursor-priya">Priya editing...</span>
+                </div>
+              </div>
+
+              <p data-hf-id="hf-q7ho" style="font-size: 19px; color: #CBD5E1; line-height: 1.6;">
+                In asynchronous distributed networks, achieving consensus requires quorum validation to avoid split-brain states under Byzantine fault conditions.
+              </p>
+
+              <div data-hf-id="hf-ttvk" class="editor-code-snippet">
+                <span data-hf-id="hf-0x2j" style="color: #EC4899;">function</span> verifyQuorum(nodes, votes) {<br data-hf-id="hf-rsrt">
+                &#160;&#160;<span data-hf-id="hf-5cjy" style="color: #8B5CF6;">const</span> threshold = Math.floor(nodes.length / 2) + 1;<br data-hf-id="hf-szow">
+                &#160;&#160;<span data-hf-id="hf-c5g9" style="color: #EC4899;">return</span> votes.length &gt;= threshold;<br data-hf-id="hf-sldv">
+                }
+              </div>
+
+              <div data-hf-id="hf-n43u" style="display: flex; gap: 14px; margin-top: 6px;">
+                <span data-hf-id="hf-gsp7" style="font-size: 13px; padding: 5px 12px; background: rgba(139, 92, 246, 0.2); border-radius: 8px; color: #C4B5FD; font-weight: 600;">#CS301</span>
+                <span data-hf-id="hf-umds" style="font-size: 13px; padding: 5px 12px; background: rgba(16, 185, 129, 0.2); border-radius: 8px; color: #6EE7B7; font-weight: 600;">#ExamPrep</span>
+                <span data-hf-id="hf-vnp2" style="font-size: 13px; padding: 5px 12px; background: rgba(245, 158, 11, 0.2); border-radius: 8px; color: #FCD34D; font-weight: 600;">#Midterm</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           SCENE 5: 3D FLASHCARDS (31.5s - 40.0s)
+           ══════════════════════════════════════════════════════════════ -->
+      <section data-hf-id="hf-8tq6" id="scene-5" class="clip" data-start="31.5" data-duration="8.5">
+        <div data-hf-id="hf-i7oq" id="s5-content" style="display:flex; flex-direction:column; align-items:center; width:100%;">
+          <div data-hf-id="hf-tpx0" class="section-badge badge-amber">Feature 03 • Spaced Repetition</div>
+          <h1 data-hf-id="hf-em43" class="main-headline">
+            Active Recall with <span data-hf-id="hf-vkpc" class="gradient-text-violet">Interactive 3D Decks</span>
+          </h1>
+          <p data-hf-id="hf-m1gp" class="sub-headline">
+            Scientifically optimized interval scheduling ensures concepts stick into long-term memory.
+          </p>
+
+          <div data-hf-id="hf-xpmp" class="flashcard-stage" data-layout-allow-overlap="">
+            <div data-hf-id="hf-u1nj" id="s5-card-inner" class="flashcard-inner" data-layout-allow-overlap="">
+              <!-- Front -->
+              <div data-hf-id="hf-3eb6" class="card-face card-front" data-layout-allow-overlap="">
+                <div data-hf-id="hf-bc7r" class="card-header-row" data-layout-allow-overlap="">
+                  <span data-hf-id="hf-nawv" data-layout-allow-overlap="" style="font-size: 13px; font-weight: 700; color: #C4B5FD; text-transform: uppercase;">CARD 14 OF 30 • NETWORKING</span>
+                  <span data-hf-id="hf-ftgm" data-layout-allow-overlap="" style="font-size: 13px; font-weight: 700; color: #F59E0B;">⚡ Hard Concept</span>
+                </div>
+                <div data-hf-id="hf-81wt" class="card-question" data-layout-allow-overlap="">
+                  What is the fundamental difference between TCP 3-Way Handshake and UDP datagram flow?
+                </div>
+                <div data-hf-id="hf-h6wv" data-layout-allow-overlap="">
+                  <span data-hf-id="hf-pk4c" data-layout-allow-overlap="" style="font-size: 14px; font-weight: 600; color: #94A3B8;">Click or press Space to reveal answer...</span>
+                  <div data-hf-id="hf-qw8u" class="card-progress-bar"><div data-hf-id="hf-hjew" class="card-progress-fill"></div></div>
+                </div>
+              </div>
+
+              <!-- Back -->
+              <div data-hf-id="hf-py3o" class="card-face card-back" data-layout-allow-overlap="">
+                <div data-hf-id="hf-4jo7" class="card-header-row" data-layout-allow-overlap="">
+                  <span data-hf-id="hf-rhng" data-layout-allow-overlap="" style="font-size: 13px; font-weight: 700; color: #67E8F9; text-transform: uppercase;">VERIFIED EXPLANATION</span>
+                  <span data-hf-id="hf-26ro" data-layout-allow-overlap="" style="font-size: 13px; font-weight: 700; color: #10B981;">✓ Mastered</span>
+                </div>
+                <div data-hf-id="hf-68mu" class="card-answer" data-layout-allow-overlap="">
+                  <strong data-hf-id="hf-eshm" data-layout-allow-overlap="">TCP:</strong> Connection-oriented with SYN → SYN-ACK → ACK negotiation ensuring reliable, ordered, error-checked packet delivery.<br data-hf-id="hf-qluq"><br data-hf-id="hf-q7jp">
+                  <strong data-hf-id="hf-uyfy" data-layout-allow-overlap="">UDP:</strong> Connectionless protocol transmitting datagrams without state verification, optimized for lowest possible latency.
+                </div>
+                <div data-hf-id="hf-52wz" data-layout-allow-overlap="" style="display: flex; gap: 14px;">
+                  <button data-hf-id="hf-khn4" data-layout-allow-overlap="" class="tool-btn" style="background:#EF4444; color:#FFF;">Again (1d)</button>
+                  <button data-hf-id="hf-1wxz" data-layout-allow-overlap="" class="tool-btn" style="background:#F59E0B; color:#FFF;">Hard (3d)</button>
+                  <button data-hf-id="hf-80t5" data-layout-allow-overlap="" class="tool-btn" style="background:#10B981; color:#FFF; font-weight:700;">Easy (7d) ✓</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           SCENE 6: AI QUIZ GENERATOR (40.0s - 49.0s)
+           ══════════════════════════════════════════════════════════════ -->
+      <section data-hf-id="hf-azh2" id="scene-6" class="clip" data-start="40" data-duration="9">
+        <div data-hf-id="hf-8l3f" id="s6-content" style="display:flex; flex-direction:column; align-items:center; width:100%;">
+          <div data-hf-id="hf-jaj0" class="section-badge badge-violet">Feature 04 • AI Assessment Engine</div>
+          <h1 data-hf-id="hf-bs2n" class="main-headline">
+            From Lecture PDF to <span data-hf-id="hf-zatu" class="gradient-text-violet">Exam Quiz in 3 Seconds</span>
+          </h1>
+          <p data-hf-id="hf-sol8" class="sub-headline">
+            Upload slides or syllabus documents — Groq AI instantly extracts high-yield practice questions.
+          </p>
+
+          <div data-hf-id="hf-ugr0" class="quiz-stage-wrapper">
+            <div data-hf-id="hf-q99h" id="s6-upload-box" class="glass-card pdf-upload-card">
+              <div data-hf-id="hf-9kh6" class="pdf-icon-box">PDF</div>
+              <div data-hf-id="hf-y7yw">
+                <h3 data-hf-id="hf-6k1v" style="font-family:'Sora',sans-serif; font-size:17px; font-weight:700;">CS301_Operating_Systems_Ch4.pdf</h3>
+                <span data-hf-id="hf-kbid" style="font-size: 13px; color: #94A3B8;">4.8 MB • 42 Pages</span>
+              </div>
+              <div data-hf-id="hf-3l44" class="ai-scan-bar"><div data-hf-id="hf-pvoe" class="ai-scan-fill"></div></div>
+              <span data-hf-id="hf-160t" style="font-size: 13px; font-weight: 700; color: #10B981;">✨ Groq AI extracted 15 MCQs</span>
+            </div>
+
+            <div data-hf-id="hf-xgmw" id="s6-quiz-card" class="glass-card quiz-interactive-card">
+              <div data-hf-id="hf-mewz" style="display:flex; justify-content:space-between; align-items:center;">
+                <span data-hf-id="hf-qgtd" style="font-size: 12px; font-weight: 700; color: #94A3B8; text-transform: uppercase;">QUESTION 4 OF 10 • TIMER 00:28</span>
+                <span data-hf-id="hf-bcn3" id="s6-xp-badge" class="xp-badge-pop">+150 XP STREAK! 🔥</span>
+              </div>
+
+              <h2 data-hf-id="hf-9yxr" style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; color:#FFF; line-height:1.35;">
+                Which CPU scheduling algorithm prevents starvation through dynamic aging?
+              </h2>
+
+              <div data-hf-id="hf-sepv" class="quiz-options-list">
+                <div data-hf-id="hf-vmtj" class="quiz-opt"><span data-hf-id="hf-gx6m">A. First-Come, First-Served (FCFS)</span></div>
+                <div data-hf-id="hf-ygyv" class="quiz-opt"><span data-hf-id="hf-96oo">B. Shortest Remaining Time First</span></div>
+                <div data-hf-id="hf-ythg" id="s6-opt-c" class="quiz-opt opt-correct">
+                  <span data-hf-id="hf-aoem">C. Priority Scheduling with Aging</span>
+                  <span data-hf-id="hf-56a0" style="color:#10B981; font-weight:800;">✓ CORRECT</span>
+                </div>
+                <div data-hf-id="hf-y2nu" class="quiz-opt"><span data-hf-id="hf-lo09">D. Multi-Level Queue without feedback</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══════════════════════════════════════════════════════════════
+           SCENE 7: ENTREPRENEURSHIP & GRAND FINALE (49.0s - 60.0s)
+           ══════════════════════════════════════════════════════════════ -->
+      <section data-hf-id="hf-ya65" id="scene-7" class="clip" data-start="49" data-duration="11">
+        <div data-hf-id="hf-sm1j" id="s7-content" class="scene-7-layout">
+          <!-- Part A: Pitch Metric Grid (49.0s - 54.0s) -->
+          <div data-hf-id="hf-m5lw" id="s7-metrics-block" style="display:flex; flex-direction:column; align-items:center; width:100%;">
+            <div data-hf-id="hf-u4k9" class="section-badge badge-amber">The Entrepreneurship Opportunity</div>
+            <h1 data-hf-id="hf-bn8x" class="main-headline">
+              A Scalable Platform with <span data-hf-id="hf-bie6" class="gradient-text-violet">Built-In Viral Loops</span>
+            </h1>
+            <p data-hf-id="hf-070v" class="sub-headline">
+              High student retention, multi-tiered monetization, and zero customer acquisition friction.
+            </p>
+
+            <div data-hf-id="hf-8alb" class="pitch-grid">
+              <div data-hf-id="hf-ga38" id="s7-c1" class="glass-card pitch-stat-card">
+                <div data-hf-id="hf-fl7k" class="pitch-metric-value color-violet">20M+</div>
+                <div data-hf-id="hf-1m3h" class="pitch-metric-title">Target Market</div>
+                <div data-hf-id="hf-i7ed" class="pitch-metric-desc">Higher education students and competitive exam cohorts needing structured collaboration.</div>
+              </div>
+
+              <div data-hf-id="hf-r5kv" id="s7-c2" class="glass-card pitch-stat-card">
+                <div data-hf-id="hf-2l0b" class="pitch-metric-value color-pink">1 → 5</div>
+                <div data-hf-id="hf-ipod" class="pitch-metric-title">Viral Invitation Loop</div>
+                <div data-hf-id="hf-q1q5" class="pitch-metric-desc">Every student who creates a study room naturally brings 4-6 classmates onto the platform.</div>
+              </div>
+
+              <div data-hf-id="hf-n7gu" id="s7-c3" class="glass-card pitch-stat-card">
+                <div data-hf-id="hf-qtjd" class="pitch-metric-value color-emerald">3-Tier</div>
+                <div data-hf-id="hf-0g8j" class="pitch-metric-title">Monetization Engine</div>
+                <div data-hf-id="hf-bmkm" class="pitch-metric-desc">Free student base, Pro AI generation subscription ($8/mo), and institutional campus licenses.</div>
+              </div>
+
+              <div data-hf-id="hf-vvcp" id="s7-c4" class="glass-card pitch-stat-card">
+                <div data-hf-id="hf-bdn0" class="pitch-metric-value color-amber">4.2x</div>
+                <div data-hf-id="hf-kp27" class="pitch-metric-title">Higher Retention</div>
+                <div data-hf-id="hf-td8p" class="pitch-metric-desc">Gamified streaks, XP progression, and peer accountability transform study from a chore into a habit.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Part B: Grand Finale Lockup (54.0s - 60.0s) -->
+          <div data-hf-id="hf-kngq" id="s7-finale-block" class="finale-lockup" style="opacity: 0;">
+            <img data-hf-id="hf-qevx" id="s7-logo" src="assets/img/logo.png" alt="EduWrap Logo" class="finale-logo" style="width: auto; height: 110px; border-radius: 20px;">
+
+            <h1 data-hf-id="hf-giov" class="main-headline" style="margin-bottom: 8px;">
+              Education isn't solitary.<br data-hf-id="hf-regs">
+              <span data-hf-id="hf-fwbr" class="gradient-text-violet">It's collaborative.</span>
+            </h1>
+
+            <p data-hf-id="hf-exy0" class="sub-headline" style="margin-bottom: 12px;">
+              Join thousands of students studying smarter together on EduWrap.
+            </p>
+
+            <div data-hf-id="hf-3dp4" id="s7-cta" class="cta-url-card">
+              edu-wrap.vercel.app
+            </div>
+
+            <div data-hf-id="hf-fqo0" class="beta-subtext">
+              🚀 Public Beta Live • 100% Free for College Students
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════
+         GSAP MASTER TIMELINE (60.0 SECONDS TOTAL • ZERO-GAP PACING)
+         ══════════════════════════════════════════════════════════════ -->
+    <script>
+      const tl = gsap.timeline({ paused: true });
+
+      // ── Total Progress Bar (0 to 60s) ──
+      tl.to("#timeline-progress", { width: "100%", duration: 60, ease: "none" }, 0);
+
+      // ── SCENE 1: THE PROBLEM (0.0s - 6.5s) ──
+      tl.from("#s1-content", { opacity: 0, y: 30, duration: 0.5, ease: "power3.out" }, 0.1);
+      tl.from("#s1-card-1", { opacity: 0, y: 24, scale: 0.95, duration: 0.35, ease: "back.out(1.5)" }, 0.6);
+      tl.from("#s1-card-2", { opacity: 0, y: 24, scale: 0.95, duration: 0.35, ease: "back.out(1.5)" }, 1.1);
+      tl.from("#s1-card-3", { opacity: 0, y: 24, scale: 0.95, duration: 0.35, ease: "back.out(1.5)" }, 1.6);
+      tl.from("#s1-card-4", { opacity: 0, y: 24, scale: 0.95, duration: 0.35, ease: "back.out(1.5)" }, 2.1);
+      tl.from("#s1-punchline", { opacity: 0, scale: 0.92, duration: 0.45, ease: "power3.out" }, 3.2);
+      // Fast kinetic exit directly into Scene 2
+      tl.to("#s1-content", { opacity: 0, y: -30, duration: 0.35, ease: "power2.in" }, 6.15);
+
+      // ── SCENE 2: THE SOLUTION (6.5s - 14.5s) ──
+      tl.from("#s2-content", { opacity: 0, y: 30, scale: 0.97, duration: 0.45, ease: "power3.out" }, 6.5);
+      tl.from("#s2-mockup", { opacity: 0, scale: 0.92, duration: 0.65, ease: "back.out(1.3)" }, 7.1);
+      tl.from("#s2-pills", { opacity: 0, y: 16, duration: 0.45, ease: "power3.out" }, 9.2);
+      // Smooth continuous drift
+      tl.to("#s2-mockup", { scale: 1.02, duration: 4.5, ease: "none" }, 9.5);
+      tl.to("#s2-content", { opacity: 0, y: -30, duration: 0.35, ease: "power2.in" }, 14.15);
+
+      // ── SCENE 3: LIVE STUDY ROOMS (14.5s - 23.0s) ──
+      tl.from("#s3-content", { opacity: 0, y: 30, duration: 0.45, ease: "power3.out" }, 14.5);
+      tl.from(["#s3-v1", "#s3-v2", "#s3-v3", "#s3-v4"], {
+        opacity: 0,
+        scale: 0.92,
+        stagger: 0.18,
+        duration: 0.45,
+        ease: "back.out(1.4)"
+      }, 15.0);
+      tl.from("#s3-timer", { opacity: 0, x: 25, duration: 0.45, ease: "power3.out" }, 16.0);
+      tl.from("#s3-chat", { opacity: 0, x: 25, duration: 0.45, ease: "power3.out" }, 16.8);
+      tl.to("#s3-content", { opacity: 0, x: -35, duration: 0.35, ease: "power2.in" }, 22.65);
+
+      // ── SCENE 4: MULTIPLAYER NOTES (23.0s - 31.5s) ──
+      tl.from("#s4-content", { opacity: 0, x: 35, duration: 0.45, ease: "power3.out" }, 23.0);
+      tl.from("#s4-editor", { opacity: 0, scale: 0.96, duration: 0.55, ease: "power3.out" }, 23.5);
+      tl.from("#s4-cursor-1", { opacity: 0, scale: 0, duration: 0.35, ease: "back.out(2)" }, 24.6);
+      tl.from("#s4-cursor-2", { opacity: 0, scale: 0, duration: 0.35, ease: "back.out(2)" }, 25.8);
+      tl.to("#s4-content", { opacity: 0, y: -30, duration: 0.35, ease: "power2.in" }, 31.15);
+
+      // ── SCENE 5: 3D FLASHCARDS (31.5s - 40.0s) ──
+      tl.from("#s5-content", { opacity: 0, y: 30, duration: 0.45, ease: "power3.out" }, 31.5);
+      tl.from("#s5-card-inner", { opacity: 0, scale: 0.88, duration: 0.55, ease: "back.out(1.4)" }, 32.0);
+      // Fast active recall flip at t=35.0s
+      tl.to("#s5-card-inner", { rotateY: 180, duration: 0.8, ease: "power2.inOut" }, 35.0);
+      tl.to("#s5-content", { opacity: 0, scale: 1.05, duration: 0.35, ease: "power2.in" }, 39.65);
+
+      // ── SCENE 6: AI QUIZ GENERATOR (40.0s - 49.0s) ──
+      tl.from("#s6-content", { opacity: 0, y: 30, duration: 0.45, ease: "power3.out" }, 40.0);
+      tl.from("#s6-upload-box", { opacity: 0, x: -30, duration: 0.5, ease: "power3.out" }, 40.5);
+      tl.from("#s6-quiz-card", { opacity: 0, x: 30, duration: 0.5, ease: "power3.out" }, 41.0);
+      tl.from("#s6-opt-c", { scale: 0.95, duration: 0.35, ease: "elastic.out(1, 0.5)" }, 43.5);
+      tl.from("#s6-xp-badge", { opacity: 0, scale: 0, duration: 0.4, ease: "back.out(2)" }, 44.0);
+      tl.to("#s6-content", { opacity: 0, y: -30, duration: 0.35, ease: "power2.in" }, 48.65);
+
+      // ── SCENE 7: ENTREPRENEURSHIP & GRAND FINALE (49.0s - 60.0s) ──
+      tl.from("#s7-metrics-block", { opacity: 0, y: 30, duration: 0.45, ease: "power3.out" }, 49.0);
+      tl.from(["#s7-c1", "#s7-c2", "#s7-c3", "#s7-c4"], {
+        opacity: 0,
+        y: 30,
+        stagger: 0.2,
+        duration: 0.45,
+        ease: "back.out(1.4)"
+      }, 49.6);
+
+      // Transition metrics away at 53.6s into Grand Finale
+      tl.to("#s7-metrics-block", { opacity: 0, y: -40, duration: 0.4, ease: "power2.in" }, 53.6);
+      tl.to("#s7-finale-block", { opacity: 1, duration: 0.4, ease: "power2.out" }, 54.0);
+      tl.from("#s7-logo", { scale: 0.5, opacity: 0, duration: 0.6, ease: "back.out(1.8)" }, 54.1);
+      tl.from("#s7-cta", { opacity: 0, y: 16, scale: 0.94, duration: 0.45, ease: "back.out(1.5)" }, 55.2);
+
+      // Music resolution & final soft fade
+      tl.to("#root", { opacity: 0, duration: 0.8, ease: "power2.inOut" }, 59.2);
+
+      // Register timeline with Hyperframes
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>

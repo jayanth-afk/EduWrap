@@ -1,0 +1,6 @@
+College students waste 40% of their study time juggling between Discord, Notion, Quizlet, and Zoom.
+
+We built EduWrap — the all-in-one AI-powered collaborative workspace bringing multiplayer notes, 3D active recall flashcards, instant PDF quiz generation, and live study rooms into one cohesive platform.
+
+Built for higher education with native viral growth loops. Watch our 60-second launch demo 🚀
+https://edu-wrap.vercel.app/
