@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Mic, MicOff, Video, VideoOff, MonitorUp, PhoneOff, Maximize, SmilePlus, Upload, Download, X } from 'lucide-react';
 import { useRoom } from '../../../contexts/RoomContext';
 import { Avatar } from '../../../components/ui/Avatar';
@@ -9,6 +8,7 @@ export default function LiveWorkspace() {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [presentedPdf, setPresentedPdf] = useState(null);
+  const [notification, setNotification] = useState(null);
   const containerRef = useRef(null);
 
   if (!activeClassroom) return null;
@@ -24,8 +24,6 @@ export default function LiveWorkspace() {
       document.exitFullscreen();
     }
   };
-
-  const [notification, setNotification] = useState(null);
 
   const showNotification = (msg) => {
     setNotification(msg);
